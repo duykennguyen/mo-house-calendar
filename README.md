@@ -54,20 +54,27 @@ web/
 HTML/CSS/JS thuần, `supabase-js` UMD qua CDN jsdelivr. Không có build step: sửa file, đẩy lên
 nhánh `main`, GitHub Actions tự đưa `web/` lên Pages.
 
-## Cài đặt lần đầu
+## Cài đặt — đã làm xong ngày 21/09/2026
 
-1. **Settings → Pages → Source = "GitHub Actions"** (chỉ làm một lần).
-2. Trong Supabase → Authentication → URL Configuration → **Redirect URLs**, thêm
-   `https://duykennguyen.github.io/mo-house-calendar/` để nút "Tiếp tục bằng Google" trên
-   site này quay về đúng chỗ. Chưa thêm thì vẫn dùng được: đăng nhập ở Mô Hub rồi mở Calendar.
-3. Mở `web/can-ho.html` bằng tài khoản quản trị viên, bật **xuất bản** cho nhà và các căn
-   muốn hiện trên lịch công khai.
+1. ✅ Settings → Pages → Source = "GitHub Actions".
+2. ✅ Supabase → Authentication → URL Configuration → **Redirect URLs** đã có
+   `https://duykennguyen.github.io/mo-house-calendar/**`, nên nút "Tiếp tục bằng Google"
+   ngay trên site này quay về đúng chỗ.
+3. ✅ Đã bật **xuất bản** cho cả 4 nhà và 10 căn. Tắt từng căn ở trang **Căn & giá**.
+
+Còn thiếu dữ liệu: 6 căn của CamF chưa điền **sức chứa** và **diện tích**, nên dòng mô tả
+dưới tên căn chỉ hiện "1 PN". Điền ở trang Căn & giá là đủ, không phải sửa code.
 
 ## Lựa chọn đang áp dụng (21/09/2026)
 
 - Lịch công khai cho xem trước **6 tháng**, đổi ở `SO_THANG_CONG_KHAI` trong `web/config.js`.
 - **Không** hiện giá niêm yết cho khách chưa đăng nhập, để đồng bộ với web Mô House đang ghi
-  "Liên hệ". Đổi bằng `HIEN_GIA_CONG_KHAI` trong `web/config.js`.
+  "Liên hệ". Ẩn thật ở tầng database: migration `20260921000004_bo_gia_khoi_view_cong_khai.sql`
+  bên repo `mo-hub` đã bỏ `list_rent_month` / `list_rent_night` khỏi view `public_units`.
+  `HIEN_GIA_CONG_KHAI` trong `config.js` giờ chỉ đổi câu chữ — muốn thật sự công khai giá
+  thì phải thêm hai cột đó trở lại view bằng một migration mới.
+- Lịch công khai hiện **tên căn thật** (Gừng, Tía Tô…). Muốn giấu cơ cấu tòa nhà thì sửa
+  `public_units` trả nhãn chung thay cho `units.name`, cũng bằng một migration mới.
 
 ## Chưa làm
 
