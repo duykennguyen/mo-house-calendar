@@ -54,6 +54,11 @@ web/
 HTML/CSS/JS thuần, `supabase-js` UMD qua CDN jsdelivr. Không có build step: sửa file, đẩy lên
 nhánh `main`, GitHub Actions tự đưa `web/` lên Pages.
 
+> ⚠️ **Sửa file trong `assets/` thì phải tăng số sau `?v=` trong cả 4 trang HTML.**
+> GitHub Pages cho trình duyệt giữ file JS/CSS trong cache khá lâu, nên nếu không đổi
+> đường dẫn thì người dùng sẽ nhận HTML mới kèm JavaScript cũ và trang hỏng. Đã dính
+> một lần ngày 21/09/2026.
+
 ## Cài đặt — đã làm xong ngày 21/09/2026
 
 1. ✅ Settings → Pages → Source = "GitHub Actions".
