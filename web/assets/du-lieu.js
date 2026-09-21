@@ -13,6 +13,18 @@
     den: themThang(dauThang(vnToday()), C.SO_THANG_CONG_KHAI),
   });
 
+  // Xếp căn theo thứ tự nhà rồi tới thứ tự căn. `units.sort` chỉ là thứ tự trong
+  // một nhà; nếu xếp theo mình nó thì căn của các nhà cài răng lược và dải tên nhà
+  // trên lịch bị lặp lại nhiều lần.
+  function sapXepCan(units, props) {
+    const thuTuNha = new Map(props.map((p, i) => [p.id, i]));   // props đã order theo sort
+    const viTri = (id) => (thuTuNha.has(id) ? thuTuNha.get(id) : 9999);
+    return units.slice().sort((a, b) =>
+      viTri(a.property_id) - viTri(b.property_id)
+      || (a.sort ?? 0) - (b.sort ?? 0)
+      || String(a.name).localeCompare(String(b.name), "vi"));
+  }
+
   async function taiDuLieu(me) {
     if (me.congKhai) return taiCongKhai();
     return me.canBook ? taiDayDu() : taiChoNguoiXem();
@@ -27,10 +39,11 @@
       sb.from("public_availability").select("unit_id,start_date,end_date")
         .lt("start_date", den).gt("end_date", tu),
     ]);
+    const props = (rp.data ?? []).map((p) => ({ id: p.id, name: p.title, area_label: p.area_label, sort: p.sort }));
     return {
       nguon: "cong-khai", tu, den,
-      props: (rp.data ?? []).map((p) => ({ id: p.id, name: p.title, area_label: p.area_label, sort: p.sort })),
-      units: ru.data ?? [],
+      props: props,
+      units: sapXepCan(ru.data ?? [], props),
       // Cắt bớt phần nằm ngoài khung để không lộ kế hoạch dài hạn ngoài 6 tháng
       bookings: (ra.data ?? []).map((b, i) => ({
         id: null, key: "b" + i, unit_id: b.unit_id,
@@ -51,7 +64,7 @@
     ]);
     return {
       nguon: "nguoi-xem", tu: null, den: null,
-      props: rp.data ?? [], units: ru.data ?? [],
+      props: rp.data ?? [], units: sapXepCan(ru.data ?? [], rp.data ?? []),
       bookings: (rb.data ?? []).map((b) => ({ ...b, key: "b" + b.id })),
       guests: [],
     };
@@ -67,7 +80,7 @@
     ]);
     return {
       nguon: "day-du", tu: null, den: null,
-      props: rp.data ?? [], units: ru.data ?? [],
+      props: rp.data ?? [], units: sapXepCan(ru.data ?? [], rp.data ?? []),
       bookings: (rb.data ?? []).map((b) => ({
         ...b, key: "b" + b.id,
         guest_name: b.guests?.full_name ?? null,
@@ -97,5 +110,5 @@
     return v.join(" · ");
   }
 
-  Object.assign(Mo, { taiDuLieu, tenCan, motaCan, LOAI_CAN, khungCongKhai });
+  Object.assign(Mo, { taiDuLieu, tenCan, motaCan, LOAI_CAN, khungCongKhai, sapXepCan });
 })();
