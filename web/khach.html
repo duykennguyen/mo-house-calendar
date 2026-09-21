@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Khách — Mô House Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap hep">
+  <header class="top">
+    <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Khách</span></a>
+    <nav class="dieu-huong">
+      <a href="index.html">Lịch</a>
+      <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
+      <a href="khach.html" class="on hide" data-can="dat">Khách</a>
+      <a href="can-ho.html" class="hide" data-can="admin">Căn &amp; giá</a>
+      <a id="veHub" href="#">← Mô Hub</a>
+    </nav>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="noiDung">
+    <div class="dai hide" id="daiTrangThai"></div>
+    <p class="muted">Dữ liệu cá nhân của khách thuộc phạm vi Nghị định 13/2023/NĐ-CP:
+      chỉ quản trị viên và quản lý xem được, không chia sẻ ra ngoài.</p>
+
+    <div class="cong-cu">
+      <input id="fTim" type="search" placeholder="Tìm theo tên hoặc số điện thoại…" aria-label="Tìm khách">
+      <button class="btn chinh keo" id="them">Thêm khách</button>
+    </div>
+    <div id="than"><div class="trong">Đang tải…</div></div>
+  </div>
+</div>
+
+<dialog id="dlgKhach">
+  <div class="dau"><h3 id="kTitle">Khách mới</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="kTen">Họ tên</label><input id="kTen" placeholder="Nguyễn Văn A"></div>
+      <div><label for="kPhone">Số điện thoại</label><input id="kPhone" inputmode="tel"></div>
+      <div><label for="kEmail">Email</label><input id="kEmail" type="email"></div>
+      <div><label for="kQuoc">Quốc tịch</label><input id="kQuoc" placeholder="Việt Nam"></div>
+      <div><label for="kLoaiGiay">Loại giấy tờ</label><select id="kLoaiGiay">
+        <option value="">—</option><option value="cccd">CCCD</option><option value="passport">Hộ chiếu</option></select></div>
+      <div><label for="kSoGiay">Số giấy tờ</label><input id="kSoGiay"></div>
+    </div>
+    <label for="kGhiChu">Ghi chú</label><textarea id="kGhiChu"></textarea>
+    <p class="muted" id="kMsg"></p>
+  </div>
+  <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="kSave">Lưu khách</button></div>
+</dialog>
+
+<dialog id="dlgLichSu">
+  <div class="dau"><h3 id="lsTitle">Lịch sử lưu trú</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than" id="lsBody"></div>
+  <div class="chan"><button class="btn" data-close>Đóng</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/du-lieu.js"></script>
+<script>
+const { sb, C, esc, $, $$, toast, ddmmyy, soNgay, tien } = Mo;
+const TRANG_THAI = { giu_cho: "Giữ chỗ", da_coc: "Đã cọc", dang_o: "Đang ở", ket_thuc: "Đã kết thúc", huy: "Đã hủy" };
+
+let me, D, khachs = [], sua = null;
+$("#veHub").href = C.HUB_URL;
+
+Mo.khoiDong("dat", async (nguoi) => {
+  me = nguoi;
+  $$("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+  $("#fTim").oninput = ve;
+  $("#them").onclick = () => moForm(null);
+  $("#kSave").onclick = luu;
+  await nap();
+});
+
+async function nap() {
+  D = await Mo.taiDuLieu(me);
+  khachs = (await sb.from("guests").select("*").order("full_name")).data ?? [];
+  ve();
+}
+
+function luotCuaKhach(id) {
+  return D.bookings.filter((b) => b.guest_id === id)
+    .sort((a, b) => b.start_date.localeCompare(a.start_date));
+}
+
+function ve() {
+  const t = $("#fTim").value.trim().toLowerCase();
+  const ds = khachs.filter((g) => !t ||
+    (g.full_name + " " + (g.phone ?? "") + " " + (g.email ?? "")).toLowerCase().includes(t));
+  if (!ds.length) {
+    $("#than").innerHTML = `<div class="trong">${khachs.length ? "Không tìm thấy khách nào." : "Chưa có khách nào."}</div>`;
+    return;
+  }
+  $("#than").innerHTML = `<div class="bang-khung"><table class="bang">
+    <thead><tr><th>Họ tên</th><th>Điện thoại</th><th>Email</th><th>Quốc tịch</th><th class="so">Số lượt</th><th>Gần nhất</th><th></th></tr></thead>
+    <tbody>${ds.map((g) => {
+      const l = luotCuaKhach(g.id);
+      return `<tr>
+        <td><b>${esc(g.full_name)}</b></td>
+        <td>${esc(g.phone ?? "—")}</td>
+        <td>${esc(g.email ?? "—")}</td>
+        <td>${esc(g.nationality ?? "—")}</td>
+        <td class="so">${l.length}</td>
+        <td>${l.length ? ddmmyy(l[0].start_date) : "—"}</td>
+        <td><button class="btn nho" data-ls="${g.id}">Lịch sử</button>
+            <button class="btn nho" data-sua="${g.id}">Sửa</button></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+
+  $("#than").onclick = (e) => {
+    const ls = e.target.dataset.ls, s = e.target.dataset.sua;
+    if (ls) return moLichSu(ls);
+    if (s) return moForm(khachs.find((g) => g.id === s));
+  };
+}
+
+function moLichSu(id) {
+  const g = khachs.find((x) => x.id === id);
+  const l = luotCuaKhach(id);
+  $("#lsTitle").textContent = `Lịch sử — ${g.full_name}`;
+  $("#lsBody").innerHTML = l.length ? `<div class="bang-khung"><table class="bang">
+    <thead><tr><th>Căn</th><th>Vào</th><th>Trả</th><th class="so">Đêm</th><th class="so">Giá</th><th>Trạng thái</th></tr></thead>
+    <tbody>${l.map((b) => {
+      const u = D.units.find((x) => x.id === b.unit_id);
+      return `<tr><td>${esc(u ? Mo.tenCan(u, D.props) : "—")}</td><td>${ddmmyy(b.start_date)}</td>
+        <td>${ddmmyy(b.end_date)}</td><td class="so">${soNgay(b.start_date, b.end_date)}</td>
+        <td class="so">${tien(b.rent_amount)}</td><td>${TRANG_THAI[b.status] ?? b.status}</td></tr>`;
+    }).join("")}</tbody></table></div>`
+    : `<p class="muted">Khách này chưa có lượt thuê nào.</p>`;
+  $("#dlgLichSu").showModal();
+}
+
+function moForm(g) {
+  sua = g ?? null;
+  $("#kTitle").textContent = g ? "Sửa hồ sơ khách" : "Khách mới";
+  $("#kTen").value = g?.full_name ?? "";
+  $("#kPhone").value = g?.phone ?? "";
+  $("#kEmail").value = g?.email ?? "";
+  $("#kQuoc").value = g?.nationality ?? "";
+  $("#kLoaiGiay").value = g?.id_doc_type ?? "";
+  $("#kSoGiay").value = g?.id_doc_no ?? "";
+  $("#kGhiChu").value = g?.note ?? "";
+  $("#kMsg").textContent = "";
+  $("#dlgKhach").showModal();
+}
+
+async function luu() {
+  const row = {
+    full_name: $("#kTen").value.trim(),
+    phone: $("#kPhone").value.trim() || null,
+    email: $("#kEmail").value.trim() || null,
+    nationality: $("#kQuoc").value.trim() || null,
+    id_doc_type: $("#kLoaiGiay").value || null,
+    id_doc_no: $("#kSoGiay").value.trim() || null,
+    note: $("#kGhiChu").value.trim() || null,
+  };
+  if (!row.full_name) return ($("#kMsg").textContent = "Ghi họ tên trước đã.");
+  $("#kSave").disabled = true;
+  const { error } = sua
+    ? await sb.from("guests").update(row).eq("id", sua.id)
+    : await sb.from("guests").insert(row);
+  $("#kSave").disabled = false;
+  if (error) return ($("#kMsg").textContent = "Lỗi: " + error.message);
+  $("#dlgKhach").close();
+  toast(sua ? "Đã lưu hồ sơ khách" : "Đã thêm khách");
+  await nap();
+}
+</script>
+</body>
+</html>

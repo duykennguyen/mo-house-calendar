@@ -1,0 +1,10 @@
+# Repo này là public — không để dữ liệu thật hay khóa bí mật lọt vào.
+.env
+.env.*
+*.local.sql
+seed.local.sql
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lịch đặt phòng — Mô House Calendar</title>
+<meta name="description" content="Lịch trống của các căn cho thuê Mô Đi Phê tại Hội An: CamFusion House, Nhà Trầu, Nhà Sen, Nhà Biển.">
+<meta property="og:title" content="Mô House Calendar — lịch trống các căn cho thuê Hội An">
+<meta property="og:description" content="Xem nhanh căn nào còn trống ngày nào.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Lịch đặt phòng</span></a>
+    <nav class="dieu-huong">
+      <a href="index.html" class="on">Lịch</a>
+      <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
+      <a href="khach.html" class="hide" data-can="dat">Khách</a>
+      <a href="can-ho.html" class="hide" data-can="admin">Căn &amp; giá</a>
+      <a id="veHub" href="#">← Mô Hub</a>
+    </nav>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="noiDung">
+    <div class="dai hide" id="daiTrangThai"></div>
+    <div class="dai nhac hide" id="daiCanhBao"></div>
+
+    <div class="cong-cu">
+      <input id="fTim" type="search" placeholder="Tìm nhanh nhà hoặc căn…" aria-label="Tìm nhà hoặc căn">
+      <select id="fNha" aria-label="Lọc theo nhà"><option value="">Tất cả nhà</option></select>
+      <div class="day" role="group" aria-label="Chế độ xem">
+        <button class="btn on" data-che-do="ngay">Ngày</button>
+        <button class="btn" data-che-do="tuan">Tuần</button>
+        <button class="btn" data-che-do="thang">Tháng</button>
+      </div>
+      <div class="day" role="group" aria-label="Đi tới lui">
+        <button class="btn" id="lui" aria-label="Lùi lại">←</button>
+        <button class="btn" id="nay">Hôm nay</button>
+        <button class="btn" id="toi" aria-label="Tới tiếp">→</button>
+      </div>
+      <button class="btn chinh keo hide" id="them" data-can="dat">Thêm booking</button>
+    </div>
+
+    <div class="chu-thich" id="chuThich"></div>
+    <div class="lich-khung" id="lich"><div class="trong">Đang tải lịch…</div></div>
+    <p class="muted" id="ghiChuCuoi"></p>
+  </div>
+
+  <footer class="chan-trang">
+    <p>Mô Đi Phê · Hội An — <a id="linkHouse" href="#">Mô House</a> ·
+       <a id="linkLienHe" href="#">Liên hệ</a></p>
+  </footer>
+</div>
+
+<dialog id="dlgBooking">
+  <div class="dau"><h3 id="bkTitle">Booking mới</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="bUnit">Căn</label><select id="bUnit"></select></div>
+      <div><label for="bTerm">Kiểu thuê</label><select id="bTerm">
+        <option value="dai_han">Dài hạn (theo tháng)</option>
+        <option value="ngan_han">Ngắn hạn (theo đêm)</option></select></div>
+      <div><label for="bStart">Ngày vào</label><input id="bStart" type="date"></div>
+      <div><label for="bEnd">Ngày trả phòng</label><input id="bEnd" type="date"></div>
+    </div>
+    <p class="muted" id="bSoDem"></p>
+
+    <label for="bGuest">Khách</label>
+    <select id="bGuest"><option value="">— Chọn khách đã có —</option></select>
+    <div class="hang">
+      <div><label for="bGuestName">hoặc thêm khách mới: tên</label><input id="bGuestName" placeholder="Nguyễn Văn A"></div>
+      <div><label for="bGuestPhone">số điện thoại</label><input id="bGuestPhone" inputmode="tel" placeholder="09…"></div>
+    </div>
+
+    <div class="hang">
+      <div><label for="bRent" id="lblGia">Giá thuê mỗi tháng (đ)</label><input id="bRent" inputmode="numeric"></div>
+      <div><label for="bDeposit">Tiền cọc (đ)</label><input id="bDeposit" inputmode="numeric"></div>
+      <div><label for="bDepStatus">Trạng thái cọc</label><select id="bDepStatus">
+        <option value="chua_nhan">Chưa nhận</option><option value="da_nhan">Đã nhận</option>
+        <option value="da_hoan">Đã hoàn</option><option value="khau_tru">Khấu trừ</option></select></div>
+      <div><label for="bStatus">Trạng thái booking</label><select id="bStatus">
+        <option value="giu_cho">Giữ chỗ</option><option value="da_coc">Đã cọc</option>
+        <option value="dang_o">Đang ở</option><option value="ket_thuc">Kết thúc</option>
+        <option value="huy">Hủy</option></select></div>
+      <div><label for="bChannel">Kênh</label><select id="bChannel">
+        <option value="truc_tiep">Trực tiếp</option><option value="moi_gioi">Môi giới</option>
+        <option value="airbnb">Airbnb</option><option value="booking">Booking.com</option>
+        <option value="agoda">Agoda</option><option value="khac">Khác</option></select></div>
+      <div><label for="bBroker">Môi giới (nếu có)</label><input id="bBroker"></div>
+      <div><label for="bCommission">Hoa hồng môi giới (đ)</label><input id="bCommission" inputmode="numeric"></div>
+    </div>
+    <label for="bContract">Link hợp đồng (Google Drive)</label>
+    <input id="bContract" type="url" placeholder="https://drive.google.com/…">
+    <label for="bNote">Ghi chú</label><textarea id="bNote"></textarea>
+    <p class="muted" id="bMsg"></p>
+  </div>
+  <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="bSave">Lưu booking</button></div>
+</dialog>
+
+<dialog id="dlgChiTiet">
+  <div class="dau"><h3 id="ctTitle">Chi tiết</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than" id="ctBody"></div>
+  <div class="chan" id="ctChan"></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/du-lieu.js"></script>
+<script src="assets/lich.js"></script>
+<script>
+const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
+        tien, soTu, TRANG_THAI, KENH } = Mo;
+
+const COC = { chua_nhan: "Chưa nhận", da_nhan: "Đã nhận", da_hoan: "Đã hoàn", khau_tru: "Khấu trừ" };
+const LOAI_TIEN = { tien_thue: "Tiền thuê", tien_coc: "Tiền cọc", dien_nuoc: "Điện nước", phi_khac: "Phí khác", hoan_coc: "Hoàn cọc" };
+
+let me, D = { props: [], units: [], bookings: [], guests: [] }, lich, sua = null;
+
+$("#veHub").href = C.HUB_URL;
+$("#linkHouse").href = C.MO_HOUSE_URL;
+$("#linkLienHe").href = C.LIEN_HE_URL;
+
+Mo.khoiDong(null, async (nguoi) => {
+  me = nguoi;
+  veChuThich();
+  $$("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+
+  lich = Mo.taoLich({
+    khung: $("#lich"),
+    choPhepDat: () => !!me.canBook,
+    khiTrong: () => me.isAdmin
+      ? "Chưa có căn nào. Thêm căn ở trang Căn & giá."
+      : me.canView
+        ? "Chưa có căn nào trong hệ thống. Quản trị viên thêm ở trang Căn & giá."
+        : "Chưa có căn nào được xuất bản ra lịch công khai.",
+    onThanh: moChiTiet,
+    onOTrong: (unitId, ngay) => moForm(null, unitId, ngay),
+  });
+
+  $("#fTim").oninput = (e) => lich.datLoc(e.target.value);
+  $("#fNha").onchange = (e) => lich.datNha(e.target.value);
+  $("#lui").onclick = () => lich.truoc();
+  $("#toi").onclick = () => lich.sau();
+  $("#nay").onclick = () => lich.homNay();
+  $$("[data-che-do]").forEach((b) => (b.onclick = () => {
+    $$("[data-che-do]").forEach((x) => x.classList.toggle("on", x === b));
+    lich.datCheDo(b.dataset.cheDo);
+  }));
+  $("#them").onclick = () => moForm(null, D.units[0]?.id, vnToday());
+  $("#bSave").onclick = luuBooking;
+  $("#bUnit").onchange = goiYGia;
+  $("#bTerm").onchange = () => { nhanGia(); goiYGia(); };
+  $("#bStart").onchange = $("#bEnd").onchange = demDem;
+
+  await nap();
+});
+
+async function nap() {
+  D = await Mo.taiDuLieu(me);
+  $("#fNha").innerHTML = `<option value="">Tất cả nhà</option>` +
+    D.props.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  if (me.canBook) {
+    $("#bUnit").innerHTML = D.units.map((u) => `<option value="${u.id}">${esc(Mo.tenCan(u, D.props))}</option>`).join("");
+    $("#bGuest").innerHTML = `<option value="">— Chọn khách đã có —</option>` +
+      D.guests.map((g) => `<option value="${g.id}">${esc(g.full_name)}${g.phone ? " · " + esc(g.phone) : ""}</option>`).join("");
+  }
+  lich.datDuLieu(D);
+  lich.ve();
+  lich.cuonToiHomNay();
+  ghiChuCuoi();
+  if (me.canView) veCanhBao();
+}
+
+function veChuThich() {
+  $("#chuThich").innerHTML = me.canView
+    ? `<span class="giu_cho">Giữ chỗ</span><span class="da_coc">Đã cọc</span>
+       <span class="dang_o">Đang ở</span><span class="ket_thuc">Đã kết thúc</span>
+       <span class="pham-vi muted" id="phamVi"></span>`
+    : `<span class="ban">Đã có khách</span><span class="pham-vi muted" id="phamVi"></span>`;
+}
+
+function ghiChuCuoi() {
+  if (me.canView) {
+    $("#ghiChuCuoi").textContent = me.canBook
+      ? "Bấm vào ô trống để tạo booking, bấm vào thanh màu để xem chi tiết."
+      : "Bấm vào thanh màu để xem chi tiết lượt thuê.";
+    return;
+  }
+  const gia = C.HIEN_GIA_CONG_KHAI ? "" : " Giá thuê theo tháng: liên hệ.";
+  $("#ghiChuCuoi").innerHTML = `Ô trắng là còn trống, thanh màu là đã có khách.
+    Lịch hiển thị ${C.SO_THANG_CONG_KHAI} tháng tới.${gia}
+    <a href="${esc(C.LIEN_HE_URL)}">Liên hệ để giữ chỗ →</a>`;
+}
+
+// ---------- Cảnh báo (tài liệu mục 8.4) ----------
+async function veCanhBao() {
+  const homNay = vnToday(), han30 = themNgay(homNay, 30);
+  const sapHet = D.bookings.filter((b) => ["da_coc", "dang_o"].includes(b.status)
+    && b.end_date > homNay && b.end_date <= han30);
+  const cocChuaHoan = D.bookings.filter((b) => b.status === "ket_thuc" && b.deposit_status === "da_nhan");
+  const giuCho = D.bookings.filter((b) => b.status === "giu_cho" && b.created_at
+    && b.created_at.slice(0, 10) < themNgay(homNay, -7));
+
+  const { data: tt } = await sb.from("payments").select("id,booking_id,amount_due,amount_paid,due_date");
+  const quaHan = (tt ?? []).filter((t) => t.due_date && t.due_date < homNay && (t.amount_paid ?? 0) < t.amount_due);
+
+  const muc = [];
+  if (sapHet.length) muc.push(`<span class="co">${sapHet.length} hợp đồng</span> hết hạn trong 30 ngày tới`);
+  if (quaHan.length) muc.push(`<span class="co">${quaHan.length} khoản thu</span> đã quá hạn`);
+  if (cocChuaHoan.length) muc.push(`<span class="co">${cocChuaHoan.length} khoản cọc</span> chưa hoàn sau khi khách trả phòng`);
+  if (giuCho.length) muc.push(`<span class="co">${giuCho.length} lượt giữ chỗ</span> quá 7 ngày chưa cọc`);
+  if (!muc.length) return;
+
+  const dai = $("#daiCanhBao");
+  dai.classList.remove("hide");
+  dai.innerHTML = `<b>Cần xử lý:</b> <span class="canh-bao-ds">${muc.join(" · ")}</span>
+    <a class="btn nho" href="bao-cao.html#tai-chinh">Mở báo cáo</a>`;
+}
+
+// ---------- Form tạo / sửa booking ----------
+function nhanGia() {
+  $("#lblGia").textContent = $("#bTerm").value === "dai_han" ? "Giá thuê mỗi tháng (đ)" : "Tổng tiền thuê (đ)";
+}
+function goiYGia() {
+  if (sua) return;                       // đang sửa thì giữ nguyên giá đã lưu
+  const u = D.units.find((x) => x.id === $("#bUnit").value);
+  if (!u) return;
+  const g = $("#bTerm").value === "dai_han" ? u.list_rent_month : u.list_rent_night;
+  if (g) $("#bRent").value = g;
+}
+function demDem() {
+  const a = $("#bStart").value, b = $("#bEnd").value;
+  if (!a || !b || b <= a) return ($("#bSoDem").textContent = "");
+  const n = soNgay(a, b);
+  $("#bSoDem").textContent = `${n} đêm — ngày trả phòng ${ddmmyy(b)} không tính đêm đó.`;
+}
+
+function moForm(b, unitId, ngay) {
+  sua = b;
+  $("#bkTitle").textContent = b ? `Sửa booking #${b.id}` : "Booking mới";
+  $("#bUnit").value = b?.unit_id ?? unitId ?? D.units[0]?.id;
+  $("#bTerm").value = b?.term_type ?? "dai_han";
+  $("#bStart").value = b?.start_date ?? ngay ?? vnToday();
+  $("#bEnd").value = b?.end_date ?? themThang(ngay ?? vnToday(), 1);
+  $("#bGuest").value = b?.guest_id ?? "";
+  $("#bGuestName").value = ""; $("#bGuestPhone").value = "";
+  $("#bRent").value = b?.rent_amount ?? "";
+  $("#bDeposit").value = b?.deposit_amount ?? "";
+  $("#bDepStatus").value = b?.deposit_status ?? "chua_nhan";
+  $("#bStatus").value = b?.status ?? "giu_cho";
+  $("#bChannel").value = b?.channel ?? "truc_tiep";
+  $("#bBroker").value = b?.broker_name ?? "";
+  $("#bCommission").value = b?.commission_amount ?? "";
+  $("#bContract").value = b?.contract_url ?? "";
+  $("#bNote").value = b?.note ?? "";
+  $("#bMsg").textContent = "";
+  nhanGia(); if (!b) goiYGia(); demDem();
+  $("#dlgBooking").showModal();
+}
+
+async function luuBooking() {
+  const row = {
+    unit_id: $("#bUnit").value,
+    start_date: $("#bStart").value,
+    end_date: $("#bEnd").value,
+    term_type: $("#bTerm").value,
+    rent_amount: soTu($("#bRent").value),
+    deposit_amount: soTu($("#bDeposit").value),
+    deposit_status: $("#bDepStatus").value,
+    status: $("#bStatus").value,
+    channel: $("#bChannel").value,
+    broker_name: $("#bBroker").value.trim() || null,
+    commission_amount: soTu($("#bCommission").value),
+    contract_url: $("#bContract").value.trim() || null,
+    note: $("#bNote").value.trim() || null,
+    guest_id: $("#bGuest").value || null,
+  };
+  const bao = (t) => { $("#bMsg").textContent = t; return false; };
+  if (!row.unit_id) return bao("Chọn căn trước đã.");
+  if (!row.start_date || !row.end_date) return bao("Điền ngày vào và ngày trả phòng.");
+  if (row.end_date <= row.start_date) return bao("Ngày trả phòng phải sau ngày vào.");
+
+  $("#bSave").disabled = true;
+  const tenMoi = $("#bGuestName").value.trim();
+  if (tenMoi) {                              // khách mới: tạo hồ sơ khách trước
+    const { data: g, error: eg } = await sb.from("guests")
+      .insert({ full_name: tenMoi, phone: $("#bGuestPhone").value.trim() || null }).select().single();
+    if (eg) { $("#bSave").disabled = false; return bao("Không lưu được khách: " + eg.message); }
+    row.guest_id = g.id;
+  }
+
+  const { error } = sua
+    ? await sb.from("bookings").update(row).eq("id", sua.id)
+    : await sb.from("bookings").insert(row);
+  $("#bSave").disabled = false;
+  if (error) {
+    return bao(error.code === "23P01"
+      ? "Căn này đã có khách trong khoảng ngày đó. Chọn ngày khác hoặc căn khác."
+      : "Lỗi: " + error.message);
+  }
+  $("#dlgBooking").close();
+  toast(sua ? "Đã lưu booking" : "Đã tạo booking");
+  await nap();
+}
+
+// ---------- Chi tiết booking ----------
+async function moChiTiet(id) {
+  const b = D.bookings.find((x) => x.id === id);
+  if (!b) return;
+  const u = D.units.find((x) => x.id === b.unit_id);
+  $("#ctTitle").textContent = `Booking #${b.id} — ${u ? Mo.tenCan(u, D.props) : ""}`;
+
+  const [{ data: tt }, { data: nk }] = await Promise.all([
+    sb.from("payments").select("*").eq("booking_id", id).order("due_date"),
+    sb.from("booking_log").select("*").eq("booking_id", id).order("at", { ascending: false }).limit(30),
+  ]);
+  const homNay = vnToday();
+  const dong = (tt ?? []).map((t) => {
+    const thieu = (t.amount_paid ?? 0) < t.amount_due;
+    const tre = thieu && t.due_date && t.due_date < homNay;
+    return `<tr class="${tre ? "tre" : ""}">
+      <td>${esc(t.period_label || LOAI_TIEN[t.kind] || t.kind)}</td>
+      <td>${t.due_date ? ddmm(t.due_date) : "—"}${tre ? ` <small>trễ ${soNgay(t.due_date, homNay)} ngày</small>` : ""}</td>
+      <td class="so">${tien(t.amount_due)}</td>
+      <td class="so">${t.amount_paid ? tien(t.amount_paid) : "—"}</td>
+      <td>${me.canBook && thieu ? `<button class="btn nho reu" data-thu="${t.id}" data-so="${t.amount_due}">Đã thu</button>` : ""}</td>
+    </tr>`;
+  }).join("");
+
+  const dem = soNgay(b.start_date, b.end_date);
+  $("#ctBody").innerHTML = `
+    <p><b>${esc(b.guest_name || "(chưa ghi tên khách)")}</b>${b.guest_phone ? ` · ${esc(b.guest_phone)}` : ""}</p>
+    <p>${ddmmyy(b.start_date)} → ${ddmmyy(b.end_date)} · ${dem} đêm
+      · ${b.term_type === "dai_han" ? "dài hạn" : "ngắn hạn"} · <b>${TRANG_THAI[b.status] ?? b.status}</b></p>
+    <p class="muted">Giá: ${tien(b.rent_amount)}${b.term_type === "dai_han" ? "/tháng" : ""}
+      · Cọc: ${tien(b.deposit_amount)} (${COC[b.deposit_status] ?? "—"})
+      · Kênh: ${KENH[b.channel] ?? "—"}${b.broker_name ? " · " + esc(b.broker_name) : ""}${
+        b.commission_amount ? " · hoa hồng " + tien(b.commission_amount) : ""}</p>
+    ${b.contract_url ? `<p><a href="${esc(b.contract_url)}" target="_blank" rel="noopener">Mở hợp đồng</a></p>` : ""}
+    ${b.note ? `<p class="muted">${esc(b.note)}</p>` : ""}
+    <h3>Lịch thu tiền</h3>
+    ${dong ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Kỳ</th><th>Hạn</th><th>Phải thu</th><th>Đã thu</th><th></th></tr></thead><tbody>${dong}</tbody></table></div>`
+           : `<p class="muted">Chưa có lịch thu tiền.</p>`}
+    ${nk?.length ? `<h3>Nhật ký</h3>${nk.map((l) =>
+        `<div class="log"><b>${esc(l.actor ?? "—")}</b> ${esc(l.action)}<div class="khi">${when(l.at)}</div></div>`).join("")}` : ""}`;
+
+  $("#ctChan").innerHTML = !me.canBook ? "" : `
+    ${b.term_type === "dai_han" ? `<button class="btn" id="ctLich">Tạo lịch thu theo tháng</button>` : ""}
+    <button class="btn" id="ctGiaHan">Gia hạn</button>
+    ${b.status !== "huy" ? `<button class="btn" id="ctHuy">Hủy lượt thuê</button>` : ""}
+    ${me.isAdmin ? `<button class="btn" id="ctXoa">Xóa</button>` : ""}
+    <button class="btn chinh" id="ctSua">Sửa</button>`;
+
+  $("#ctBody").onclick = async (e) => {
+    const t = e.target.dataset.thu;
+    if (!t) return;
+    const { error } = await sb.from("payments")
+      .update({ amount_paid: Number(e.target.dataset.so), paid_date: vnToday() }).eq("id", t);
+    if (error) return toast("Lỗi: " + error.message);
+    toast("Đã ghi nhận khoản thu"); moChiTiet(id);
+  };
+
+  if (me.canBook) {
+    const nutLich = $("#ctLich");
+    if (nutLich) nutLich.onclick = async () => {
+      const { data, error } = await sb.rpc("generate_rent_schedule", { p_booking: id });
+      if (error) return toast("Lỗi: " + error.message);
+      toast(`Đã tạo ${data} kỳ thu tiền`); moChiTiet(id);
+    };
+    $("#ctGiaHan").onclick = () => { $("#dlgChiTiet").close(); moForm(null, b.unit_id, b.end_date); };
+    $("#ctSua").onclick = () => { $("#dlgChiTiet").close(); moForm(b); };
+    const nutHuy = $("#ctHuy");
+    if (nutHuy) nutHuy.onclick = async () => {
+      if (!confirm("Hủy lượt thuê này? Khoảng ngày đó sẽ thành trống trở lại.")) return;
+      const { error } = await sb.from("bookings").update({ status: "huy" }).eq("id", id);
+      if (error) return toast("Lỗi: " + error.message);
+      $("#dlgChiTiet").close(); toast("Đã hủy lượt thuê"); await nap();
+    };
+    const nutXoa = $("#ctXoa");
+    if (nutXoa) nutXoa.onclick = async () => {
+      if (!confirm("Xóa booking này? Dữ liệu vẫn còn trong database, chỉ ẩn khỏi lịch.")) return;
+      const { error } = await sb.from("bookings").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      if (error) return toast("Lỗi: " + error.message);
+      $("#dlgChiTiet").close(); toast("Đã xóa booking"); await nap();
+    };
+  }
+  $("#dlgChiTiet").showModal();
+}
+</script>
+</body>
+</html>

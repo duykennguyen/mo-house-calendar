@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Căn &amp; giá — Mô House Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap hep">
+  <header class="top">
+    <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Căn &amp; giá</span></a>
+    <nav class="dieu-huong">
+      <a href="index.html">Lịch</a>
+      <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
+      <a href="khach.html" class="hide" data-can="dat">Khách</a>
+      <a href="can-ho.html" class="on hide" data-can="admin">Căn &amp; giá</a>
+      <a id="veHub" href="#">← Mô Hub</a>
+    </nav>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="noiDung">
+    <div class="dai hide" id="daiTrangThai"></div>
+    <p class="muted">Bật <b>xuất bản</b> thì căn đó mới hiện trên lịch công khai cho khách có link.
+      Nhà phải được xuất bản trước thì các căn bên trong mới hiện ra.</p>
+    <div id="than"><div class="trong">Đang tải…</div></div>
+  </div>
+</div>
+
+<dialog id="dlgCan">
+  <div class="dau"><h3 id="cTitle">Căn mới</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="cNha">Thuộc nhà</label><select id="cNha"></select></div>
+      <div><label for="cMa">Mã căn</label><input id="cMa" placeholder="GUNG"></div>
+      <div><label for="cTen">Tên căn</label><input id="cTen" placeholder="Gừng"></div>
+      <div><label for="cLoai">Loại căn</label><select id="cLoai">
+        <option value="">—</option><option value="nguyen_can">Nguyên căn</option>
+        <option value="studio">Studio</option><option value="1pn">1 phòng ngủ</option>
+        <option value="2pn">2 phòng ngủ</option><option value="3pn">3 phòng ngủ</option>
+        <option value="penthouse">Penthouse</option></select></div>
+    </div>
+    <div class="hang-3">
+      <div><label for="cPn">Số phòng ngủ</label><input id="cPn" inputmode="numeric"></div>
+      <div><label for="cKhach">Sức chứa (khách)</label><input id="cKhach" inputmode="numeric"></div>
+      <div><label for="cDt">Diện tích (m²)</label><input id="cDt" inputmode="decimal"></div>
+    </div>
+    <div class="hang">
+      <div><label for="cGiaThang">Giá niêm yết / tháng (đ)</label><input id="cGiaThang" inputmode="numeric"></div>
+      <div><label for="cGiaDem">Giá niêm yết / đêm (đ)</label><input id="cGiaDem" inputmode="numeric"></div>
+      <div><label for="cSort">Thứ tự hiển thị</label><input id="cSort" inputmode="numeric" value="100"></div>
+      <div><label for="cActive">Còn khai thác</label><select id="cActive">
+        <option value="true">Có</option><option value="false">Không</option></select></div>
+    </div>
+    <label for="cXuatBan">Xuất bản ra lịch công khai</label>
+    <select id="cXuatBan"><option value="false">Không</option><option value="true">Có</option></select>
+    <label for="cGhiChu">Ghi chú nội bộ</label><textarea id="cGhiChu"></textarea>
+    <p class="muted" id="cMsg"></p>
+  </div>
+  <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="cSave">Lưu căn</button></div>
+</dialog>
+
+<dialog id="dlgNha">
+  <div class="dau"><h3 id="nTitle">Nhà</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="nTieuDe">Tên hiện cho khách</label><input id="nTieuDe" placeholder="Để trống thì dùng tên nội bộ"></div>
+      <div><label for="nKhuVuc">Khu vực</label><input id="nKhuVuc" placeholder="Trà Quế"></div>
+    </div>
+    <label for="nTomTat">Tóm tắt cho khách</label><textarea id="nTomTat"></textarea>
+    <label for="nBanDo">Link bản đồ</label><input id="nBanDo" type="url" placeholder="https://maps.google.com/…">
+    <label for="nXuatBan">Xuất bản ra lịch công khai</label>
+    <select id="nXuatBan"><option value="false">Không</option><option value="true">Có</option></select>
+    <p class="muted">Không ghi thông tin pháp lý hay giá chào bán ở đây — phần đó nằm ở khu vực chỉ quản trị viên xem.</p>
+    <p class="muted" id="nMsg"></p>
+  </div>
+  <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="nSave">Lưu nhà</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/du-lieu.js"></script>
+<script>
+const { sb, C, esc, $, $$, toast, tien, soTu } = Mo;
+
+let props = [], units = [], suaCan = null, suaNha = null;
+$("#veHub").href = C.HUB_URL;
+
+Mo.khoiDong("admin", async () => {
+  $$("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+  $("#cSave").onclick = luuCan;
+  $("#nSave").onclick = luuNha;
+  await nap();
+});
+
+async function nap() {
+  const [rp, ru] = await Promise.all([
+    sb.from("properties").select("*").order("sort"),
+    sb.from("units").select("*").order("sort"),
+  ]);
+  props = rp.data ?? []; units = ru.data ?? [];
+  $("#cNha").innerHTML = props.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  ve();
+}
+
+function ve() {
+  if (!props.length) {
+    $("#than").innerHTML = `<div class="trong">Chưa có nhà nào trong hệ thống.
+      Thêm nhà ở Mô Hub trước, rồi quay lại đây thêm căn.</div>`;
+    return;
+  }
+  $("#than").innerHTML = props.map((p) => {
+    const ds = units.filter((u) => u.property_id === p.id);
+    return `<section>
+      <h2>${esc(p.name)} ${p.is_published ? "" : `<span class="muted">· chưa xuất bản</span>`}</h2>
+      <p class="muted">${esc(p.area_label ?? "chưa ghi khu vực")}
+        <button class="btn nho" data-nha="${p.id}">Sửa thông tin nhà</button>
+        <button class="btn nho chinh" data-them="${p.id}">Thêm căn</button></p>
+      ${ds.length ? `<div class="bang-khung"><table class="bang">
+        <thead><tr><th>Căn</th><th>Loại</th><th class="so">PN</th><th class="so">Khách</th><th class="so">m²</th>
+          <th class="so">Giá tháng</th><th class="so">Giá đêm</th><th>Công khai</th><th></th></tr></thead>
+        <tbody>${ds.map((u) => `<tr>
+          <td><b>${esc(u.name)}</b><br><small class="muted">${esc(u.code)}</small></td>
+          <td>${esc(Mo.LOAI_CAN[u.unit_type] ?? u.unit_type ?? "—")}</td>
+          <td class="so">${u.bedrooms ?? "—"}</td>
+          <td class="so">${u.max_guests ?? "—"}</td>
+          <td class="so">${u.area_m2 ?? "—"}</td>
+          <td class="so">${tien(u.list_rent_month)}</td>
+          <td class="so">${tien(u.list_rent_night)}</td>
+          <td>${u.is_published ? "Có" : "Không"}${u.active ? "" : " · ngừng"}</td>
+          <td><button class="btn nho" data-can="${u.id}">Sửa</button></td></tr>`).join("")}</tbody></table></div>`
+        : `<p class="muted">Nhà này chưa có căn cho thuê nào.</p>`}
+    </section>`;
+  }).join("");
+
+  $("#than").onclick = (e) => {
+    const { nha, them, can } = e.target.dataset;
+    if (nha) return moNha(props.find((p) => p.id === nha));
+    if (them) return moCan(null, them);
+    if (can) return moCan(units.find((u) => u.id === can));
+  };
+}
+
+// ---------- Căn ----------
+function moCan(u, propertyId) {
+  suaCan = u ?? null;
+  $("#cTitle").textContent = u ? `Sửa căn — ${u.name}` : "Căn mới";
+  $("#cNha").value = u?.property_id ?? propertyId ?? props[0]?.id;
+  $("#cMa").value = u?.code ?? "";
+  $("#cTen").value = u?.name ?? "";
+  $("#cLoai").value = u?.unit_type ?? "";
+  $("#cPn").value = u?.bedrooms ?? "";
+  $("#cKhach").value = u?.max_guests ?? "";
+  $("#cDt").value = u?.area_m2 ?? "";
+  $("#cGiaThang").value = u?.list_rent_month ?? "";
+  $("#cGiaDem").value = u?.list_rent_night ?? "";
+  $("#cSort").value = u?.sort ?? 100;
+  $("#cActive").value = String(u ? u.active : true);
+  $("#cXuatBan").value = String(u ? u.is_published : false);
+  $("#cGhiChu").value = u?.note ?? "";
+  $("#cMsg").textContent = "";
+  $("#dlgCan").showModal();
+}
+
+async function luuCan() {
+  const dt = $("#cDt").value.trim().replace(",", ".");
+  const row = {
+    property_id: $("#cNha").value,
+    code: $("#cMa").value.trim().toUpperCase(),
+    name: $("#cTen").value.trim(),
+    unit_type: $("#cLoai").value || null,
+    bedrooms: soTu($("#cPn").value),
+    max_guests: soTu($("#cKhach").value),
+    area_m2: dt ? Number(dt) : null,
+    list_rent_month: soTu($("#cGiaThang").value),
+    list_rent_night: soTu($("#cGiaDem").value),
+    sort: soTu($("#cSort").value) ?? 100,
+    active: $("#cActive").value === "true",
+    is_published: $("#cXuatBan").value === "true",
+    note: $("#cGhiChu").value.trim() || null,
+  };
+  if (!row.code || !row.name) return ($("#cMsg").textContent = "Điền mã căn và tên căn.");
+  if (row.area_m2 !== null && !isFinite(row.area_m2)) return ($("#cMsg").textContent = "Diện tích phải là số.");
+
+  $("#cSave").disabled = true;
+  const { error } = suaCan
+    ? await sb.from("units").update(row).eq("id", suaCan.id)
+    : await sb.from("units").insert(row);
+  $("#cSave").disabled = false;
+  if (error) {
+    return ($("#cMsg").textContent = error.code === "23505"
+      ? "Nhà này đã có căn dùng mã đó. Đổi mã khác."
+      : "Lỗi: " + error.message);
+  }
+  $("#dlgCan").close(); toast(suaCan ? "Đã lưu căn" : "Đã thêm căn"); await nap();
+}
+
+// ---------- Nhà ----------
+function moNha(p) {
+  suaNha = p;
+  $("#nTitle").textContent = `Nhà — ${p.name}`;
+  $("#nTieuDe").value = p.public_title ?? "";
+  $("#nKhuVuc").value = p.area_label ?? "";
+  $("#nTomTat").value = p.public_summary ?? "";
+  $("#nBanDo").value = p.map_url ?? "";
+  $("#nXuatBan").value = String(!!p.is_published);
+  $("#nMsg").textContent = "";
+  $("#dlgNha").showModal();
+}
+
+async function luuNha() {
+  const row = {
+    public_title: $("#nTieuDe").value.trim() || null,
+    area_label: $("#nKhuVuc").value.trim() || null,
+    public_summary: $("#nTomTat").value.trim() || null,
+    map_url: $("#nBanDo").value.trim() || null,
+    is_published: $("#nXuatBan").value === "true",
+  };
+  $("#nSave").disabled = true;
+  const { error } = await sb.from("properties").update(row).eq("id", suaNha.id);
+  $("#nSave").disabled = false;
+  if (error) return ($("#nMsg").textContent = "Lỗi: " + error.message);
+  $("#dlgNha").close(); toast("Đã lưu thông tin nhà"); await nap();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Báo cáo — Mô House Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Báo cáo</span></a>
+    <nav class="dieu-huong">
+      <a href="index.html">Lịch</a>
+      <a href="bao-cao.html" class="on hide" data-can="xem">Báo cáo</a>
+      <a href="khach.html" class="hide" data-can="dat">Khách</a>
+      <a href="can-ho.html" class="hide" data-can="admin">Căn &amp; giá</a>
+      <a id="veHub" href="#">← Mô Hub</a>
+    </nav>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="noiDung">
+    <div class="dai hide" id="daiTrangThai"></div>
+
+    <div class="cong-cu">
+      <input id="fTu" type="date" aria-label="Từ ngày">
+      <input id="fDen" type="date" aria-label="Đến ngày">
+      <select id="fNha" aria-label="Nhà"><option value="">Tất cả nhà</option></select>
+      <select id="fCan" aria-label="Căn"><option value="">Tất cả căn</option></select>
+      <select id="fKenh" aria-label="Kênh"><option value="">Mọi kênh</option></select>
+      <select id="fTrangThai" aria-label="Trạng thái"><option value="">Mọi trạng thái</option></select>
+      <button class="btn keo" id="xuat">Xuất CSV</button>
+    </div>
+    <p class="muted" id="nhanhKy"></p>
+
+    <div class="tabs" id="tabs">
+      <button class="on" data-tab="luot">Theo lượt khách</button>
+      <button data-tab="thang">Theo tháng</button>
+      <button data-tab="tai-chinh">Tài chính</button>
+    </div>
+    <div id="than"><div class="trong">Đang tải số liệu…</div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="assets/app.js"></script>
+<script src="assets/du-lieu.js"></script>
+<script>
+const { sb, C, esc, $, $$, toast, xuatCsv, vnToday, themNgay, themThang, dauThang, soNgay,
+        ngayTrongThang, ddmm, ddmmyy, nhanThang, tien, phanTram } = Mo;
+
+const TRANG_THAI = { giu_cho: "Giữ chỗ", da_coc: "Đã cọc", dang_o: "Đang ở", ket_thuc: "Đã kết thúc", huy: "Đã hủy" };
+const KENH = { truc_tiep: "Trực tiếp", moi_gioi: "Môi giới", airbnb: "Airbnb", booking: "Booking.com", agoda: "Agoda", khac: "Khác" };
+const LOAI_TIEN = { tien_thue: "Tiền thuê", tien_coc: "Tiền cọc", dien_nuoc: "Điện nước", phi_khac: "Phí khác", hoan_coc: "Hoàn cọc" };
+
+let me, D = { props: [], units: [], bookings: [] }, payments = [], tab = "luot", bangHienTai = [];
+
+$("#veHub").href = C.HUB_URL;
+
+const lonHon = (a, b) => (a > b ? a : b);
+const nhoHon = (a, b) => (a < b ? a : b);
+// Số đêm giao nhau giữa [aS,aE) và [bS,bE)
+const giaoDem = (aS, aE, bS, bE) => Math.max(0, soNgay(lonHon(aS, bS), nhoHon(aE, bE)));
+
+Mo.khoiDong("xem", async (nguoi) => {
+  me = nguoi;
+  // Mặc định: từ đầu tháng này tới hết 12 tháng tới
+  $("#fTu").value = dauThang(vnToday());
+  $("#fDen").value = themThang(dauThang(vnToday()), 12);
+  $("#fKenh").innerHTML = `<option value="">Mọi kênh</option>` +
+    Object.entries(KENH).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("#fTrangThai").innerHTML = `<option value="">Mọi trạng thái</option>` +
+    Object.entries(TRANG_THAI).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+
+  $$("#tabs button").forEach((b) => (b.onclick = () => {
+    $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+    tab = b.dataset.tab; location.hash = tab; ve();
+  }));
+  $$(".cong-cu select, .cong-cu input").forEach((el) => (el.onchange = () => { dongBoCan(); ve(); }));
+  $("#xuat").onclick = xuatBang;
+
+  if (["luot", "thang", "tai-chinh"].includes(location.hash.slice(1))) {
+    tab = location.hash.slice(1);
+    $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.tab === tab));
+  }
+  await nap();
+});
+
+async function nap() {
+  D = await Mo.taiDuLieu(me);
+  payments = (await sb.from("payments").select("*")).data ?? [];
+  $("#fNha").innerHTML = `<option value="">Tất cả nhà</option>` +
+    D.props.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  dongBoCan();
+  ve();
+}
+
+function dongBoCan() {
+  const nha = $("#fNha").value, dangChon = $("#fCan").value;
+  const ds = D.units.filter((u) => !nha || u.property_id === nha);
+  $("#fCan").innerHTML = `<option value="">Tất cả căn</option>` +
+    ds.map((u) => `<option value="${u.id}">${esc(u.name)}</option>`).join("");
+  $("#fCan").value = ds.some((u) => u.id === dangChon) ? dangChon : "";
+}
+
+// ---------- Bộ lọc ----------
+function boLoc() {
+  return {
+    tu: $("#fTu").value || "1900-01-01",
+    den: $("#fDen").value || "2999-01-01",
+    nha: $("#fNha").value, can: $("#fCan").value,
+    kenh: $("#fKenh").value, trangThai: $("#fTrangThai").value,
+  };
+}
+function canTrongLoc(f) {
+  return D.units.filter((u) => (!f.nha || u.property_id === f.nha) && (!f.can || u.id === f.can));
+}
+function bookingTrongLoc(f) {
+  const idCan = new Set(canTrongLoc(f).map((u) => u.id));
+  return D.bookings.filter((b) => idCan.has(b.unit_id)
+    && (f.trangThai ? b.status === f.trangThai : b.status !== "huy")
+    && (!f.kenh || b.channel === f.kenh)
+    && b.start_date < f.den && b.end_date > f.tu);
+}
+const tenCan = (id) => {
+  const u = D.units.find((x) => x.id === id);
+  return u ? Mo.tenCan(u, D.props) : "—";
+};
+
+function ve() {
+  const f = boLoc();
+  $("#nhanhKy").textContent = `Khoảng lọc: ${ddmmyy(f.tu)} → ${ddmmyy(f.den)}`;
+  if (tab === "luot") veLuot(f);
+  else if (tab === "thang") veThang(f);
+  else veTaiChinh(f);
+}
+
+// Vẽ một bảng và nhớ lại để nút Xuất CSV dùng đúng dữ liệu đang xem
+function bang(tieuDe, hang, opts = {}) {
+  bangHienTai = [tieuDe, ...hang.map((h) => h.o)];
+  return `<div class="bang-khung"><table class="bang">
+    <thead><tr>${tieuDe.map((t, i) => `<th class="${opts.so?.includes(i) ? "so" : ""}">${esc(t)}</th>`).join("")}</tr></thead>
+    <tbody>${hang.map((h) => `<tr class="${h.lop ?? ""}">${h.o.map((v, i) =>
+      `<td class="${opts.so?.includes(i) ? "so" : ""}">${h.raw?.[i] ?? esc(v)}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div>`;
+}
+function xuatBang() {
+  if (!bangHienTai.length) return toast("Chưa có số liệu để xuất.");
+  xuatCsv(`mo-house-${tab}-${vnToday()}`, bangHienTai);
+}
+
+// ---------- 8.1 Báo cáo theo lượt khách ----------
+function veLuot(f) {
+  const ds = bookingTrongLoc(f).slice().sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const thuCuaBooking = (id) => payments.filter((t) => t.booking_id === id);
+
+  const hang = ds.map((b) => {
+    const tt = thuCuaBooking(b.id);
+    const daThu = tt.reduce((s, t) => s + (t.amount_paid ?? 0), 0);
+    const conNo = tt.reduce((s, t) => s + Math.max(0, (t.amount_due ?? 0) - (t.amount_paid ?? 0)), 0);
+    return { o: [
+      tenCan(b.unit_id),
+      b.guest_name || "(chưa ghi tên)",
+      ddmmyy(b.start_date), ddmmyy(b.end_date), soNgay(b.start_date, b.end_date),
+      b.term_type === "dai_han" ? "Dài hạn" : "Ngắn hạn",
+      KENH[b.channel] ?? "—",
+      b.broker_name ?? "—",
+      b.commission_amount ? tien(b.commission_amount) : "—",
+      tien(b.rent_amount), tien(b.deposit_amount),
+      { chua_nhan: "Chưa nhận", da_nhan: "Đã nhận", da_hoan: "Đã hoàn", khau_tru: "Khấu trừ" }[b.deposit_status] ?? "—",
+      daThu ? tien(daThu) : "—", conNo ? tien(conNo) : "—",
+      TRANG_THAI[b.status] ?? b.status,
+    ] };
+  });
+
+  const tongDem = ds.reduce((s, b) => s + soNgay(b.start_date, b.end_date), 0);
+  const coNgayTao = ds.filter((b) => b.created_at);
+  const datTruoc = coNgayTao.length
+    ? coNgayTao.reduce((s, b) => s + soNgay(b.created_at.slice(0, 10), b.start_date), 0) / coNgayTao.length : null;
+  const theoKenh = {};
+  ds.forEach((b) => (theoKenh[b.channel ?? "khac"] = (theoKenh[b.channel ?? "khac"] ?? 0) + 1));
+
+  $("#than").innerHTML = `
+    <div class="the-luoi">
+      <div class="the"><span class="so">${ds.length}</span><span class="nhan">lượt thuê</span></div>
+      <div class="the"><span class="so">${tongDem}</span><span class="nhan">tổng số đêm</span></div>
+      <div class="the"><span class="so">${ds.length ? Math.round(tongDem / ds.length) : 0}</span><span class="nhan">độ dài lưu trú trung bình (đêm)</span></div>
+      <div class="the"><span class="so">${datTruoc === null ? "—" : Math.round(datTruoc)}</span><span class="nhan">đặt trước trung bình (ngày)</span></div>
+    </div>
+    <p class="muted">Tỷ trọng theo kênh: ${Object.entries(theoKenh).map(([k, v]) =>
+      `${KENH[k] ?? k} ${phanTram(v / (ds.length || 1))}`).join(" · ") || "—"}
+      ${datTruoc === null ? "<br>Thời gian đặt trước cần cột ngày tạo booking — tài khoản chỉ xem không đọc được cột này." : ""}</p>
+    <h2>Từng lượt thuê</h2>
+    ${ds.length ? bang(["Căn", "Khách", "Ngày vào", "Ngày trả", "Số đêm", "Kiểu thuê", "Kênh", "Môi giới",
+        "Hoa hồng", "Giá", "Cọc", "Trạng thái cọc", "Đã thu", "Còn nợ", "Trạng thái"], hang, { so: [4, 8, 9, 10, 12, 13] })
+      : `<p class="trong">Không có lượt thuê nào trong khoảng lọc.</p>`}`;
+}
+
+// ---------- 8.2 Báo cáo theo tháng ----------
+// Doanh thu ghi nhận phân bổ đều theo ngày: dài hạn lấy giá tháng chia số ngày của tháng;
+// ngắn hạn lấy tổng tiền chia tổng số đêm, rồi nhân số đêm rơi vào tháng đó.
+function veThang(f) {
+  const can = canTrongLoc(f), ds = bookingTrongLoc(f);
+  const thangs = [];
+  for (let m = dauThang(f.tu); m < f.den; m = themThang(m, 1)) thangs.push(m);
+
+  const o = [];
+  for (const u of can) {
+    for (const m of thangs) {
+      const mEnd = themThang(m, 1), ngay = ngayTrongThang(m);
+      let demBan = 0, doanhThu = 0;
+      for (const b of ds.filter((x) => x.unit_id === u.id)) {
+        const d = giaoDem(b.start_date, b.end_date, m, mEnd);
+        if (!d) continue;
+        demBan += d;
+        const tongDem = soNgay(b.start_date, b.end_date);
+        const moiDem = b.term_type === "dai_han"
+          ? (b.rent_amount ?? 0) / ngay
+          : (b.rent_amount ?? 0) / (tongDem || 1);
+        doanhThu += moiDem * d;
+      }
+      const idB = new Set(ds.filter((x) => x.unit_id === u.id).map((x) => x.id));
+      const thucThu = payments.filter((t) => idB.has(t.booking_id) && t.paid_date
+        && t.paid_date >= m && t.paid_date < mEnd).reduce((s, t) => s + (t.amount_paid ?? 0), 0);
+      o.push({ unit: u, thang: m, khaDung: ngay, demBan, doanhThu, thucThu });
+    }
+  }
+
+  const gop = $("#fGop")?.value ?? "can";
+  const khoa = (r) => gop === "can" ? r.unit.id + r.thang : gop === "nha" ? r.unit.property_id + r.thang : r.thang;
+  const nhomLai = {};
+  o.forEach((r) => {
+    const k = khoa(r);
+    if (!nhomLai[k]) nhomLai[k] = { ten: gop === "can" ? Mo.tenCan(r.unit, D.props)
+        : gop === "nha" ? (D.props.find((p) => p.id === r.unit.property_id)?.name ?? "—") : "Toàn hệ thống",
+      thang: r.thang, khaDung: 0, demBan: 0, doanhThu: 0, thucThu: 0 };
+    const g = nhomLai[k];
+    g.khaDung += r.khaDung; g.demBan += r.demBan; g.doanhThu += r.doanhThu; g.thucThu += r.thucThu;
+  });
+  const dong = Object.values(nhomLai).sort((a, b) => a.thang.localeCompare(b.thang) || a.ten.localeCompare(b.ten));
+
+  const hang = dong.map((g) => ({ o: [
+    nhanThang(g.thang), g.ten, g.khaDung, g.demBan, phanTram(g.khaDung ? g.demBan / g.khaDung : null),
+    tien(g.doanhThu), tien(g.demBan ? g.doanhThu / g.demBan : null), tien(g.khaDung ? g.doanhThu / g.khaDung : null),
+    tien(g.thucThu),
+  ] }));
+  const t = dong.reduce((s, g) => ({ khaDung: s.khaDung + g.khaDung, demBan: s.demBan + g.demBan,
+    doanhThu: s.doanhThu + g.doanhThu, thucThu: s.thucThu + g.thucThu }), { khaDung: 0, demBan: 0, doanhThu: 0, thucThu: 0 });
+  if (dong.length) hang.push({ lop: "tong", o: ["Tổng", "", t.khaDung, t.demBan,
+    phanTram(t.khaDung ? t.demBan / t.khaDung : null), tien(t.doanhThu),
+    tien(t.demBan ? t.doanhThu / t.demBan : null), tien(t.khaDung ? t.doanhThu / t.khaDung : null), tien(t.thucThu)] });
+
+  $("#than").innerHTML = `
+    <div class="cong-cu">
+      <label for="fGop" style="margin:0 6px 0 0">Gộp theo</label>
+      <select id="fGop" style="flex:0 0 160px">
+        <option value="can">Từng căn</option><option value="nha">Từng nhà</option><option value="tong">Toàn hệ thống</option>
+      </select>
+    </div>
+    <div class="the-luoi">
+      <div class="the"><span class="so">${phanTram(t.khaDung ? t.demBan / t.khaDung : null)}</span><span class="nhan">tỷ lệ lấp đầy</span></div>
+      <div class="the"><span class="so">${t.demBan}</span><span class="nhan">đêm đã bán / ${t.khaDung} đêm khả dụng</span></div>
+      <div class="the"><span class="so">${tien(t.doanhThu)}</span><span class="nhan">doanh thu ghi nhận</span></div>
+      <div class="the"><span class="so">${tien(t.thucThu)}</span><span class="nhan">thực thu trong kỳ</span></div>
+    </div>
+    <h2>Chi tiết theo tháng</h2>
+    ${hang.length ? bang(["Tháng", gop === "can" ? "Căn" : gop === "nha" ? "Nhà" : "", "Đêm khả dụng", "Đêm đã bán",
+        "Tỷ lệ lấp đầy", "Doanh thu ghi nhận", "ADR", "RevPAR", "Thực thu"], hang, { so: [2, 3, 4, 5, 6, 7, 8] })
+      : `<p class="trong">Không có số liệu trong khoảng lọc.</p>`}
+    <p class="muted">ADR = doanh thu ghi nhận ÷ đêm đã bán. RevPAR = doanh thu ghi nhận ÷ đêm khả dụng.
+      Chưa có so sánh cùng kỳ năm trước vì hệ thống chưa đủ một năm dữ liệu.</p>`;
+  $("#fGop").value = gop;
+  $("#fGop").onchange = ve;
+}
+
+// ---------- 8.3 Báo cáo tài chính ----------
+function veTaiChinh(f) {
+  const ds = bookingTrongLoc(f);
+  const idB = new Set(ds.map((b) => b.id));
+  const tt = payments.filter((t) => idB.has(t.booking_id));
+  const homNay = vnToday();
+  const trongKy = tt.filter((t) => t.due_date && t.due_date >= f.tu && t.due_date < f.den);
+
+  const theoLoai = {};
+  trongKy.forEach((t) => {
+    const k = t.kind ?? "phi_khac";
+    theoLoai[k] = theoLoai[k] ?? { due: 0, paid: 0 };
+    theoLoai[k].due += t.amount_due ?? 0; theoLoai[k].paid += t.amount_paid ?? 0;
+  });
+
+  const quaHan = tt.filter((t) => t.due_date && t.due_date < homNay && (t.amount_paid ?? 0) < (t.amount_due ?? 0));
+  const sapToi = tt.filter((t) => t.due_date && t.due_date >= homNay && t.due_date <= themNgay(homNay, 7)
+    && (t.amount_paid ?? 0) < (t.amount_due ?? 0));
+  const cocGiu = ds.filter((b) => b.deposit_status === "da_nhan" && b.status !== "ket_thuc");
+  const cocChuaHoan = ds.filter((b) => b.deposit_status === "da_nhan" && b.status === "ket_thuc");
+
+  const hoaHong = {};
+  ds.forEach((b) => {
+    if (!b.commission_amount) return;
+    const k = b.broker_name || "(không ghi tên)";
+    hoaHong[k] = (hoaHong[k] ?? 0) + b.commission_amount;
+  });
+
+  const theoKenh = {};
+  ds.forEach((b) => {
+    const k = b.channel ?? "khac";
+    theoKenh[k] = (theoKenh[k] ?? 0) + (b.rent_amount ?? 0);
+  });
+
+  // Dòng tiền 12 tháng tới: các kỳ phải thu của booking đã cọc / đang ở
+  const idChac = new Set(ds.filter((b) => ["da_coc", "dang_o"].includes(b.status)).map((b) => b.id));
+  const dongTien = [];
+  for (let m = dauThang(homNay), i = 0; i < 12; m = themThang(m, 1), i++) {
+    const mEnd = themThang(m, 1);
+    const s = payments.filter((t) => idChac.has(t.booking_id) && t.due_date && t.due_date >= m && t.due_date < mEnd)
+      .reduce((x, t) => x + (t.amount_due ?? 0), 0);
+    dongTien.push({ thang: m, so: s });
+  }
+
+  const tongDue = trongKy.reduce((s, t) => s + (t.amount_due ?? 0), 0);
+  const tongPaid = trongKy.reduce((s, t) => s + (t.amount_paid ?? 0), 0);
+  const tongQuaHan = quaHan.reduce((s, t) => s + ((t.amount_due ?? 0) - (t.amount_paid ?? 0)), 0);
+
+  const hangQuaHan = quaHan.sort((a, b) => a.due_date.localeCompare(b.due_date)).map((t) => {
+    const b = ds.find((x) => x.id === t.booking_id);
+    return { lop: "tre", o: [b ? tenCan(b.unit_id) : "—", b?.guest_name || "—",
+      t.period_label || LOAI_TIEN[t.kind] || t.kind, ddmmyy(t.due_date),
+      soNgay(t.due_date, homNay) + " ngày", tien((t.amount_due ?? 0) - (t.amount_paid ?? 0))] };
+  });
+
+  bangHienTai = [];
+  const khoiQuaHan = hangQuaHan.length
+    ? bang(["Căn", "Khách", "Kỳ", "Hạn", "Trễ", "Còn thiếu"], hangQuaHan, { so: [5] })
+    : `<p class="muted">Không có khoản thu nào quá hạn.</p>`;
+  const luuQuaHan = bangHienTai;
+
+  const hangSapToi = sapToi.sort((a, b) => a.due_date.localeCompare(b.due_date)).map((t) => {
+    const b = ds.find((x) => x.id === t.booking_id);
+    return { o: [b ? tenCan(b.unit_id) : "—", b?.guest_name || "—",
+      t.period_label || LOAI_TIEN[t.kind] || t.kind, ddmmyy(t.due_date),
+      tien((t.amount_due ?? 0) - (t.amount_paid ?? 0))] };
+  });
+  const khoiSapToi = hangSapToi.length
+    ? bang(["Căn", "Khách", "Kỳ", "Hạn", "Còn thiếu"], hangSapToi, { so: [4] })
+    : `<p class="muted">Không có khoản nào tới hạn trong 7 ngày tới.</p>`;
+
+  const hangCoc = [...cocChuaHoan.map((b) => ({ lop: "tre", o: [tenCan(b.unit_id), b.guest_name || "—",
+      "Chưa hoàn sau khi trả phòng", ddmmyy(b.end_date), tien(b.deposit_amount)] })),
+    ...cocGiu.map((b) => ({ o: [tenCan(b.unit_id), b.guest_name || "—", "Đang giữ", ddmmyy(b.end_date), tien(b.deposit_amount)] }))];
+  const khoiCoc = hangCoc.length ? bang(["Căn", "Khách", "Tình trạng", "Ngày trả phòng", "Số tiền"], hangCoc, { so: [4] })
+    : `<p class="muted">Không có khoản cọc nào đang giữ.</p>`;
+
+  $("#than").innerHTML = `
+    <div class="the-luoi">
+      <div class="the"><span class="so">${tien(tongDue)}</span><span class="nhan">phải thu trong kỳ</span></div>
+      <div class="the"><span class="so">${tien(tongPaid)}</span><span class="nhan">đã thu</span></div>
+      <div class="the ${tongQuaHan ? "nhac" : ""}"><span class="so">${tien(tongQuaHan)}</span><span class="nhan">quá hạn (${quaHan.length} khoản)</span></div>
+      <div class="the ${cocChuaHoan.length ? "nhac" : ""}"><span class="so">${cocChuaHoan.length}</span><span class="nhan">khoản cọc chưa hoàn</span></div>
+    </div>
+
+    <h2>Phải thu theo loại</h2>
+    <div class="bang-khung"><table class="bang"><thead><tr><th>Loại</th><th class="so">Phải thu</th><th class="so">Đã thu</th><th class="so">Còn lại</th></tr></thead>
+      <tbody>${Object.entries(theoLoai).map(([k, v]) => `<tr><td>${LOAI_TIEN[k] ?? k}</td>
+        <td class="so">${tien(v.due)}</td><td class="so">${tien(v.paid)}</td><td class="so">${tien(v.due - v.paid)}</td></tr>`).join("")
+        || `<tr><td colspan="4" class="muted">Chưa có kỳ thu nào trong khoảng lọc.</td></tr>`}</tbody></table></div>
+
+    <h2>Quá hạn</h2>${khoiQuaHan}
+    <h2>Sắp tới hạn (7 ngày)</h2>${khoiSapToi}
+    <h2>Tiền cọc</h2>${khoiCoc}
+
+    <h2>Hoa hồng môi giới</h2>
+    ${Object.keys(hoaHong).length
+      ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Môi giới</th><th class="so">Hoa hồng</th></tr></thead><tbody>${
+        Object.entries(hoaHong).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="so">${tien(v)}</td></tr>`).join("")}</tbody></table></div>`
+      : `<p class="muted">Chưa ghi nhận hoa hồng môi giới trong khoảng lọc${me.canBook ? "" : " (tài khoản chỉ xem không đọc được cột này)"}.</p>`}
+
+    <h2>Doanh thu theo kênh</h2>
+    <div class="bang-khung"><table class="bang"><thead><tr><th>Kênh</th><th class="so">Giá trị hợp đồng</th></tr></thead>
+      <tbody>${Object.entries(theoKenh).map(([k, v]) => `<tr><td>${KENH[k] ?? k}</td><td class="so">${tien(v)}</td></tr>`).join("")
+        || `<tr><td colspan="2" class="muted">Chưa có dữ liệu.</td></tr>`}</tbody></table></div>
+
+    <h2>Dòng tiền 12 tháng tới</h2>
+    <p class="muted">Tổng tiền phải thu theo tháng của các lượt đã cọc và đang ở — để biết trước tháng nào hụt.</p>
+    <div class="bang-khung"><table class="bang"><thead><tr><th>Tháng</th><th class="so">Phải thu</th></tr></thead>
+      <tbody>${dongTien.map((r) => `<tr><td>${nhanThang(r.thang)}</td><td class="so">${r.so ? tien(r.so) : "—"}</td></tr>`).join("")}</tbody></table></div>`;
+
+  // Nút Xuất CSV của tab này lấy danh sách quá hạn — phần cần đối chiếu nhiều nhất
+  bangHienTai = luuQuaHan.length ? luuQuaHan
+    : [["Loại", "Phải thu", "Đã thu", "Còn lại"], ...Object.entries(theoLoai).map(([k, v]) =>
+        [LOAI_TIEN[k] ?? k, v.due, v.paid, v.due - v.paid])];
+}
+</script>
+</body>
+</html>
