@@ -52,6 +52,8 @@
     <p class="muted" id="ghiChuCuoi"></p>
   </div>
 
+  <button class="fab hide" id="themFab" data-can="dat" aria-label="Thêm booking">+</button>
+
   <footer class="chan-trang">
     <p>Mô Đi Phê · Hội An — <a id="linkHouse" href="#">Mô House</a> ·
        <a id="linkLienHe" href="#">Liên hệ</a></p>
@@ -80,10 +82,11 @@
 
     <div class="hang">
       <div><label for="bRent" id="lblGia">Giá thuê mỗi tháng (đ)</label><input id="bRent" inputmode="numeric"></div>
-      <div><label for="bDeposit">Tiền cọc (đ)</label><input id="bDeposit" inputmode="numeric"></div>
-      <div><label for="bDepStatus">Trạng thái cọc</label><select id="bDepStatus">
-        <option value="chua_nhan">Chưa nhận</option><option value="da_nhan">Đã nhận</option>
-        <option value="da_hoan">Đã hoàn</option><option value="khau_tru">Khấu trừ</option></select></div>
+      <div class="o-coc"><label for="bDeposit">Khách trả trước (đ)</label><input id="bDeposit" inputmode="numeric"></div>
+      <div class="o-coc"><label for="bDepStatus">Tình trạng khoản trả trước</label><select id="bDepStatus">
+        <option value="chua_nhan">Chưa trả trước</option>
+        <option value="da_nhan">Đã trả trước</option>
+        <option value="khau_tru">Đã trừ vào tiền phòng</option></select></div>
       <div><label for="bStatus">Trạng thái booking</label><select id="bStatus">
         <option value="giu_cho">Giữ chỗ</option><option value="da_coc">Đã cọc</option>
         <option value="dang_o">Đang ở</option><option value="ket_thuc">Kết thúc</option>
@@ -95,8 +98,7 @@
       <div><label for="bBroker">Môi giới (nếu có)</label><input id="bBroker"></div>
       <div><label for="bCommission">Hoa hồng môi giới (đ)</label><input id="bCommission" inputmode="numeric"></div>
     </div>
-    <label for="bContract">Link hợp đồng (Google Drive)</label>
-    <input id="bContract" type="url" placeholder="https://drive.google.com/…">
+    <p class="nhac-tien" id="bTienTin"></p>
     <label for="bNote">Ghi chú</label><textarea id="bNote"></textarea>
     <p class="muted" id="bMsg"></p>
   </div>
@@ -116,10 +118,7 @@
 <script src="assets/lich.js"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
-        tien, soTu, TRANG_THAI, KENH } = Mo;
-
-const COC = { chua_nhan: "Chưa nhận", da_nhan: "Đã nhận", da_hoan: "Đã hoàn", khau_tru: "Khấu trừ" };
-const LOAI_TIEN = { tien_thue: "Tiền thuê", tien_coc: "Tiền cọc", dien_nuoc: "Điện nước", phi_khac: "Phí khác", hoan_coc: "Hoàn cọc" };
+        tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
 
 let me, D = { props: [], units: [], bookings: [], guests: [] }, lich, sua = null;
 
@@ -153,10 +152,12 @@ Mo.khoiDong(null, async (nguoi) => {
     $$("[data-che-do]").forEach((x) => x.classList.toggle("on", x === b));
     lich.datCheDo(b.dataset.cheDo);
   }));
-  $("#them").onclick = () => moForm(null, D.units[0]?.id, vnToday());
+  $("#them").onclick = $("#themFab").onclick = () => moForm(null, D.units[0]?.id, vnToday());
   $("#bSave").onclick = luuBooking;
   $("#bUnit").onchange = goiYGia;
   $("#bTerm").onchange = () => { nhanGia(); goiYGia(); };
+  $("#bChannel").onchange = theoKenh;
+  $("#bRent").oninput = $("#bDeposit").oninput = nhacTien;
   $("#bStart").onchange = $("#bEnd").onchange = demDem;
 
   await nap();
@@ -204,7 +205,6 @@ async function veCanhBao() {
   const homNay = vnToday(), han30 = themNgay(homNay, 30);
   const sapHet = D.bookings.filter((b) => ["da_coc", "dang_o"].includes(b.status)
     && b.end_date > homNay && b.end_date <= han30);
-  const cocChuaHoan = D.bookings.filter((b) => b.status === "ket_thuc" && b.deposit_status === "da_nhan");
   const giuCho = D.bookings.filter((b) => b.status === "giu_cho" && b.created_at
     && b.created_at.slice(0, 10) < themNgay(homNay, -7));
 
@@ -214,7 +214,6 @@ async function veCanhBao() {
   const muc = [];
   if (sapHet.length) muc.push(`<span class="co">${sapHet.length} hợp đồng</span> hết hạn trong 30 ngày tới`);
   if (quaHan.length) muc.push(`<span class="co">${quaHan.length} khoản thu</span> đã quá hạn`);
-  if (cocChuaHoan.length) muc.push(`<span class="co">${cocChuaHoan.length} khoản cọc</span> chưa hoàn sau khi khách trả phòng`);
   if (giuCho.length) muc.push(`<span class="co">${giuCho.length} lượt giữ chỗ</span> quá 7 ngày chưa cọc`);
   if (!muc.length) return;
 
@@ -226,7 +225,34 @@ async function veCanhBao() {
 
 // ---------- Form tạo / sửa booking ----------
 function nhanGia() {
-  $("#lblGia").textContent = $("#bTerm").value === "dai_han" ? "Giá thuê mỗi tháng (đ)" : "Tổng tiền thuê (đ)";
+  const ota = laOTA($("#bChannel").value);
+  $("#lblGia").textContent = ota
+    ? "Nền tảng chuyển về (đ)"
+    : ($("#bTerm").value === "dai_han" ? "Giá thuê mỗi tháng (đ)" : "Tổng tiền thuê (đ)");
+}
+
+// Kênh OTA (Airbnb, Booking.com, Agoda): nền tảng thu tiền khách rồi chuyển khoản
+// thẳng cho Mô, nên không có khoản trả trước và không thu gì lúc khách nhận phòng.
+function theoKenh() {
+  const ota = laOTA($("#bChannel").value);
+  $$(".o-coc").forEach((el) => el.classList.toggle("hide", ota));
+  if (ota) { $("#bDeposit").value = ""; $("#bDepStatus").value = "chua_nhan"; }
+  nhanGia(); nhacTien();
+}
+
+function nhacTien() {
+  const el = $("#bTienTin");
+  if (laOTA($("#bChannel").value)) {
+    el.className = "nhac-tien nen-tang";
+    el.textContent = "Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.";
+    return;
+  }
+  const gia = soTu($("#bRent").value) ?? 0, truoc = soTu($("#bDeposit").value) ?? 0;
+  if (!gia && !truoc) return (el.textContent = "", el.className = "nhac-tien");
+  el.className = "nhac-tien";
+  el.textContent = truoc > gia
+    ? "Khoản trả trước đang lớn hơn tiền phòng — kiểm tra lại."
+    : `Khách đã trả trước ${tien(truoc)} · còn thu khi nhận phòng ${tien(Math.max(0, gia - truoc))}. Khoản trả trước trừ thẳng vào tiền phòng, không hoàn lại.`;
 }
 function goiYGia() {
   if (sua) return;                       // đang sửa thì giữ nguyên giá đã lưu
@@ -258,10 +284,9 @@ function moForm(b, unitId, ngay) {
   $("#bChannel").value = b?.channel ?? "truc_tiep";
   $("#bBroker").value = b?.broker_name ?? "";
   $("#bCommission").value = b?.commission_amount ?? "";
-  $("#bContract").value = b?.contract_url ?? "";
   $("#bNote").value = b?.note ?? "";
   $("#bMsg").textContent = "";
-  nhanGia(); if (!b) goiYGia(); demDem();
+  theoKenh(); if (!b) goiYGia(); demDem();
   $("#dlgBooking").showModal();
 }
 
@@ -278,7 +303,6 @@ async function luuBooking() {
     channel: $("#bChannel").value,
     broker_name: $("#bBroker").value.trim() || null,
     commission_amount: soTu($("#bCommission").value),
-    contract_url: $("#bContract").value.trim() || null,
     note: $("#bNote").value.trim() || null,
     guest_id: $("#bGuest").value || null,
   };
@@ -340,10 +364,12 @@ async function moChiTiet(id) {
     <p>${ddmmyy(b.start_date)} → ${ddmmyy(b.end_date)} · ${dem} đêm
       · ${b.term_type === "dai_han" ? "dài hạn" : "ngắn hạn"} · <b>${TRANG_THAI[b.status] ?? b.status}</b></p>
     <p class="muted">Giá: ${tien(b.rent_amount)}${b.term_type === "dai_han" ? "/tháng" : ""}
-      · Cọc: ${tien(b.deposit_amount)} (${COC[b.deposit_status] ?? "—"})
       · Kênh: ${KENH[b.channel] ?? "—"}${b.broker_name ? " · " + esc(b.broker_name) : ""}${
         b.commission_amount ? " · hoa hồng " + tien(b.commission_amount) : ""}</p>
-    ${b.contract_url ? `<p><a href="${esc(b.contract_url)}" target="_blank" rel="noopener">Mở hợp đồng</a></p>` : ""}
+    ${laOTA(b.channel)
+      ? `<p class="nhac-tien nen-tang">Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.</p>`
+      : `<p class="nhac-tien">Đã trả trước ${tien(b.deposit_amount)} (${COC[b.deposit_status] ?? "chưa ghi"})
+         · <b>còn thu khi nhận phòng ${tien(conThu(b))}</b>. Khoản trả trước trừ vào tiền phòng, không hoàn lại.</p>`}
     ${b.note ? `<p class="muted">${esc(b.note)}</p>` : ""}
     <h3>Lịch thu tiền</h3>
     ${dong ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Kỳ</th><th>Hạn</th><th>Phải thu</th><th>Đã thu</th><th></th></tr></thead><tbody>${dong}</tbody></table></div>`

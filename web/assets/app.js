@@ -184,10 +184,85 @@
     xong(me);
   }
 
+
+  // ---------- Nhãn dùng chung ----------
+  const TRANG_THAI = { giu_cho: "Giữ chỗ", da_coc: "Đã cọc", dang_o: "Đang ở",
+                       ket_thuc: "Đã kết thúc", huy: "Đã hủy", ban: "Đã có khách" };
+  const KENH = { truc_tiep: "Trực tiếp", moi_gioi: "Môi giới", airbnb: "Airbnb",
+                 booking: "Booking.com", agoda: "Agoda", khac: "Khác" };
+  // Cọc ở Mô là tiền khách TRẢ TRƯỚC, trừ thẳng vào tiền phòng — không hoàn lại.
+  // Giá trị `da_hoan` chỉ còn để đọc dữ liệu cũ, không cho chọn mới nữa.
+  const COC = { chua_nhan: "Chưa trả trước", da_nhan: "Đã trả trước",
+                khau_tru: "Đã trừ vào tiền phòng", da_hoan: "Đã hoàn (không còn dùng)" };
+  const LOAI_TIEN = { tien_thue: "Tiền thuê", tien_coc: "Tiền trả trước",
+                      dien_nuoc: "Điện nước", phi_khac: "Phí khác", hoan_coc: "Hoàn cọc" };
+
+  // Kênh OTA: nền tảng thu tiền của khách rồi chuyển khoản thẳng cho Mô.
+  // Không có khoản trả trước và không thu gì lúc khách nhận phòng.
+  const KENH_OTA = ["airbnb", "booking", "agoda"];
+  const laOTA = (kenh) => KENH_OTA.includes(kenh);
+  // Số còn phải thu khi khách nhận phòng
+  const conThu = (b) => laOTA(b.channel) ? 0
+    : Math.max(0, (b.rent_amount ?? 0) - (b.deposit_amount ?? 0));
+
+  // ---------- Xuất Excel ----------
+  // Thư viện SheetJS chỉ tải khi người dùng bấm xuất, để trang lịch vẫn nhẹ.
+  let _tai;
+  function napXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!_tai) _tai = new Promise((xong, hong) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+      s.onload = () => xong(window.XLSX);
+      s.onerror = () => { _tai = null; hong(new Error("Không tải được thư viện Excel")); };
+      document.head.appendChild(s);
+    });
+    return _tai;
+  }
+
+  // Ngày ISO -> số sê-ri của Excel, để công thức trừ ngày ra số đêm chạy được
+  const serial = (iso) => Math.round((Date.parse(iso + "T00:00:00Z") - Date.UTC(1899, 11, 30)) / 86400000);
+  const DINH_DANG = { tien: '#,##0" đ"', ngay: "dd/mm/yyyy", phanTram: "0.0%", so: "#,##0" };
+
+  // Một ô có thể là: số, chuỗi, hoặc { f: "công thức" } / { v, z } để chỉ định định dạng
+  function taoSheet(XLSX, aoa, cot) {
+    const ws = {};
+    let soCot = 0;
+    aoa.forEach((hang, r) => {
+      soCot = Math.max(soCot, hang.length);
+      hang.forEach((o, c) => {
+        if (o === null || o === undefined || o === "") return;
+        const dia = XLSX.utils.encode_cell({ r, c });
+        if (typeof o === "object") {
+          // Ô công thức PHẢI kèm giá trị đã tính sẵn, nếu không SheetJS bỏ qua cả ô.
+          // Excel hiện ngay giá trị này và tính lại khi người dùng sửa số.
+          ws[dia] = o.f
+            ? { t: "n", f: o.f, v: Number(o.v) || 0, z: o.z }
+            : { t: typeof o.v === "number" ? "n" : "s", v: o.v, z: o.z };
+        } else if (typeof o === "number") ws[dia] = { t: "n", v: o, z: DINH_DANG.so };
+        else ws[dia] = { t: "s", v: String(o) };
+      });
+    });
+    ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(0, aoa.length - 1), c: Math.max(0, soCot - 1) } });
+    if (cot) ws["!cols"] = cot.map((w) => ({ wch: w }));
+    return ws;
+  }
+
+  async function xuatExcel(tenFile, cacSheet) {
+    let XLSX;
+    try { XLSX = await napXLSX(); }
+    catch (e) { return toast("Không tải được thư viện Excel. Kiểm tra mạng rồi thử lại."); }
+    const wb = XLSX.utils.book_new();
+    cacSheet.forEach((s) => XLSX.utils.book_append_sheet(wb, taoSheet(XLSX, s.hang, s.cot), s.ten.slice(0, 31)));
+    XLSX.writeFile(wb, tenFile.endsWith(".xlsx") ? tenFile : tenFile + ".xlsx");
+    toast("Đã tải file Excel");
+  }
+
   window.Mo = {
     sb, C, esc, $, $$, toast, copy, xuatCsv, khoiDong, hopThoaiDangNhap,
     vnToday, d2iso, iso2d, themNgay, themThang, dauThang, soNgay, soThang, ngayTrongThang,
     ddmm, ddmmyy, nhanThang, when, tien, soTu, phanTram,
-    TEN_VAI,
+    TEN_VAI, TRANG_THAI, KENH, COC, LOAI_TIEN, KENH_OTA, laOTA, conThu,
+    xuatExcel, serial, DINH_DANG,
   };
 })();

@@ -191,17 +191,103 @@ dialog .chan { background: var(--kem); display: flex; justify-content: flex-end;
 footer.chan-trang { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--vien);
   color: var(--tro); font-size: .85rem; }
 
+/* ---------- Dòng nhắc tiền trong form & chi tiết ---------- */
+.nhac-tien { margin: 10px 0 0; padding: 9px 12px; border-radius: 9px; font-size: .85rem;
+  line-height: 1.45; background: var(--nen); border-left: 3px solid var(--vien); color: var(--tro); }
+.nhac-tien:empty { display: none; }
+.nhac-tien b { color: var(--muc); }
+.nhac-tien.nen-tang { border-left-color: var(--reu); }
+
+/* ---------- Nút nổi (chỉ trên điện thoại) ---------- */
+.fab { display: none; position: fixed; right: 16px; z-index: 40;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  width: 54px; height: 54px; border-radius: 50%; border: none;
+  background: var(--nau-dam); color: #fff; font-size: 1.9rem; line-height: 1;
+  box-shadow: 0 4px 14px rgba(58, 50, 48, .32); cursor: pointer; }
+.fab:active { background: var(--muc); }
+
+/* =====================================================================
+   ĐIỆN THOẠI & MÁY TÍNH BẢNG
+   Mục tiêu: dồn phần điều khiển lại cho gọn để lịch chiếm phần lớn màn hình,
+   và không bao giờ để trang bị cuộn ngang.
+   ===================================================================== */
 @media (max-width: 760px) {
-  :root { --trai: 124px; }
-  .wrap { padding: 0 12px 56px; }
-  .top { margin: 0 -12px 10px; }
-  .lich-khung { max-height: none; }
+  :root { --trai: 112px; }
+  .wrap { padding: 0 12px 84px; }
+
+  /* Đầu trang: một hàng thương hiệu + tài khoản, hàng dưới là điều hướng vuốt ngang */
+  .top { margin: 0 -12px 8px; padding: 10px 12px 4px; gap: 6px;
+    border-radius: 0 0 14px 14px; align-items: center; }
+  .brand { flex: 1 1 auto; min-width: 0; }
+  .brand b { font-size: 1.12rem; }
+  .brand span { display: none; }
+  .who { flex: 0 0 auto; font-size: .78rem; max-width: 52%; justify-content: flex-end; }
+  .who .btn.chu { padding: 4px; }
+  .dieu-huong { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto;
+    gap: 2px 14px; padding-bottom: 2px; scrollbar-width: none; }
+  .dieu-huong::-webkit-scrollbar { display: none; }
+  .dieu-huong a { white-space: nowrap; font-size: .85rem; }
+
+  /* Thanh công cụ: ô lọc chia đôi, hai cụm nút chia đôi hàng dưới */
+  .cong-cu { gap: 6px; margin: 8px 0; }
+  .cong-cu select, .cong-cu input { flex: 1 1 calc(50% - 3px); min-width: 0; padding: 8px 10px; }
+  .cong-cu .day { flex: 1 1 calc(50% - 3px); }
+  .cong-cu .day .btn { flex: 1; padding: 8px 2px; text-align: center;
+    white-space: nowrap; font-size: .84rem; }
+  .cong-cu .keo { margin-left: 0; }
+  #them { display: none; }             /* đã có nút nổi thay thế */
+  .fab:not(.hide) { display: flex; align-items: center; justify-content: center; }
+
+  /* Chú thích & dải cảnh báo gọn lại */
+  .chu-thich { gap: 4px 12px; font-size: .76rem; margin: 6px 0; }
+  .chu-thich .pham-vi { flex: 1 0 100%; }
+  .dai { padding: 8px 11px; font-size: .86rem; gap: 6px; }
+  .dai .btn { margin-left: 0; }
+
+  /* Lịch: hàng thấp hơn, mô tả căn một dòng */
+  .lich-khung { max-height: none; border-radius: 10px; }
+  .ten-can { padding: 5px 8px; min-height: 38px; font-size: .82rem; }
+  .ten-can span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ten-can small { font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .o-ngay { min-height: 38px; }
+  .nha-nhom { font-size: .85rem; padding: 4px 8px; }
+  .thanh { font-size: .72rem; padding: 0 5px; }
+
+  /* Thẻ số liệu xếp đôi cho đỡ dài */
+  .the-luoi { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .the { padding: 10px; }
+  .the .so { font-size: 1.2rem; }
+  .the .nhan { font-size: .74rem; }
+
+  /* Bảng báo cáo: giữ cột đầu khi vuốt ngang */
+  table.bang { font-size: .82rem; }
+  table.bang th, table.bang td { padding: 6px 8px; }
+  table.bang td:first-child, table.bang th:first-child {
+    position: sticky; left: 0; background: var(--giay); z-index: 1; }
+  table.bang th:first-child { background: var(--kem); z-index: 2; }
+  table.bang tr.tong td:first-child { background: var(--nen); }
+
+  /* Hộp thoại kiểu tấm trượt từ dưới lên — dễ với ngón cái hơn hộp giữa màn hình */
+  dialog { width: 100%; max-width: none; margin: 0; position: fixed;
+    inset: auto 0 0 0; border-radius: 16px 16px 0 0; border-bottom: none; }
+  dialog .dau { padding: 12px 16px; position: sticky; top: 0; }
+  dialog .dau h3 { font-size: 1rem; }
+  dialog .than { padding: 4px 16px 12px; max-height: 62vh; }
+  dialog .chan { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  dialog .chan .btn { flex: 1 1 auto; }
+  .cong { margin: 6vh 12px 0; padding: 22px 18px; }
+
+  h2 { font-size: 1.1rem; margin: 1.3rem 0 .5rem; }
+  .log { font-size: .85rem; }
+  footer.chan-trang { margin-top: 26px; font-size: .8rem; }
 }
+
 @media (max-width: 560px) {
   .btn, .tabs button { min-height: 40px; }   /* đủ to để bấm bằng ngón tay */
   .hang, .hang-3 { grid-template-columns: 1fr; }
-  .cong-cu select, .cong-cu input { flex: 1 1 100%; }
-  .cong-cu .keo { margin-left: 0; }
-  h1 { font-size: 1.35rem; }
+  h1 { font-size: 1.3rem; }
+  label { margin: 8px 0 3px; }
+  input, select, textarea { padding: 10px 11px; }   /* ≥16px vùng chạm, iOS không tự phóng to */
 }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

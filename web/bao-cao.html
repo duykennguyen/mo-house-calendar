@@ -33,7 +33,7 @@
       <select id="fCan" aria-label="Căn"><option value="">Tất cả căn</option></select>
       <select id="fKenh" aria-label="Kênh"><option value="">Mọi kênh</option></select>
       <select id="fTrangThai" aria-label="Trạng thái"><option value="">Mọi trạng thái</option></select>
-      <button class="btn keo" id="xuat">Xuất CSV</button>
+      <button class="btn chinh keo" id="xuat">Xuất Excel</button>
     </div>
     <p class="muted" id="nhanhKy"></p>
 
@@ -51,14 +51,11 @@
 <script src="assets/app.js"></script>
 <script src="assets/du-lieu.js"></script>
 <script>
-const { sb, C, esc, $, $$, toast, xuatCsv, vnToday, themNgay, themThang, dauThang, soNgay,
-        ngayTrongThang, ddmm, ddmmyy, nhanThang, tien, phanTram } = Mo;
+const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, dauThang, soNgay,
+        ngayTrongThang, ddmm, ddmmyy, nhanThang, tien, phanTram,
+        TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu, xuatExcel, serial, DINH_DANG } = Mo;
 
-const TRANG_THAI = { giu_cho: "Giữ chỗ", da_coc: "Đã cọc", dang_o: "Đang ở", ket_thuc: "Đã kết thúc", huy: "Đã hủy" };
-const KENH = { truc_tiep: "Trực tiếp", moi_gioi: "Môi giới", airbnb: "Airbnb", booking: "Booking.com", agoda: "Agoda", khac: "Khác" };
-const LOAI_TIEN = { tien_thue: "Tiền thuê", tien_coc: "Tiền cọc", dien_nuoc: "Điện nước", phi_khac: "Phí khác", hoan_coc: "Hoàn cọc" };
-
-let me, D = { props: [], units: [], bookings: [] }, payments = [], tab = "luot", bangHienTai = [];
+let me, D = { props: [], units: [], bookings: [] }, payments = [], tab = "luot";
 
 $("#veHub").href = C.HUB_URL;
 
@@ -82,7 +79,7 @@ Mo.khoiDong("xem", async (nguoi) => {
     tab = b.dataset.tab; location.hash = tab; ve();
   }));
   $$(".cong-cu select, .cong-cu input").forEach((el) => (el.onchange = () => { dongBoCan(); ve(); }));
-  $("#xuat").onclick = xuatBang;
+  $("#xuat").onclick = xuatFileExcel;
 
   if (["luot", "thang", "tai-chinh"].includes(location.hash.slice(1))) {
     tab = location.hash.slice(1);
@@ -140,18 +137,226 @@ function ve() {
   else veTaiChinh(f);
 }
 
-// Vẽ một bảng và nhớ lại để nút Xuất CSV dùng đúng dữ liệu đang xem
 function bang(tieuDe, hang, opts = {}) {
-  bangHienTai = [tieuDe, ...hang.map((h) => h.o)];
   return `<div class="bang-khung"><table class="bang">
     <thead><tr>${tieuDe.map((t, i) => `<th class="${opts.so?.includes(i) ? "so" : ""}">${esc(t)}</th>`).join("")}</tr></thead>
     <tbody>${hang.map((h) => `<tr class="${h.lop ?? ""}">${h.o.map((v, i) =>
       `<td class="${opts.so?.includes(i) ? "so" : ""}">${h.raw?.[i] ?? esc(v)}</td>`).join("")}</tr>`).join("")}</tbody>
   </table></div>`;
 }
-function xuatBang() {
-  if (!bangHienTai.length) return toast("Chưa có số liệu để xuất.");
-  xuatCsv(`mo-house-${tab}-${vnToday()}`, bangHienTai);
+
+
+
+// ================= XUẤT EXCEL =================
+// Ba sheet số liệu + một sheet giải thích. Các ô dẫn xuất đều là CÔNG THỨC thật
+// (SUM, chia, MAX…) nên sửa một số trong Excel là cả bảng tự tính lại.
+const oTien = (n) => ({ v: Math.round(n || 0), z: DINH_DANG.tien });
+const oNgay = (iso) => ({ v: serial(iso), z: DINH_DANG.ngay });
+// Ô công thức: f là công thức Excel, v là giá trị đã tính sẵn (bắt buộc), z là định dạng
+const ct = (f, v, z) => ({ f, v, z });
+const cotChu = (i) => String.fromCharCode(65 + i);
+const chia = (a, b) => (b ? a / b : 0);
+
+function sheetLuot(f) {
+  const ds = bookingTrongLoc(f).slice().sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const hang = [["Căn", "Khách", "Ngày vào", "Ngày trả", "Số đêm", "Kiểu thuê", "Kênh",
+                 "Môi giới", "Hoa hồng", "Tiền phòng", "Đã trả trước", "Còn thu khi nhận phòng",
+                 "Đã thu", "Còn nợ", "Trạng thái"]];
+  const t = { dem: 0, hoaHong: 0, phong: 0, truoc: 0, conThu: 0, daThu: 0, conNo: 0 };
+  ds.forEach((b, i) => {
+    const r = i + 2;                                   // dòng 1 là tiêu đề
+    const tt = payments.filter((x) => x.booking_id === b.id);
+    const daThu = tt.reduce((s, x) => s + (x.amount_paid ?? 0), 0);
+    const conNo = tt.reduce((s, x) => s + Math.max(0, (x.amount_due ?? 0) - (x.amount_paid ?? 0)), 0);
+    const ota = laOTA(b.channel), dem = soNgay(b.start_date, b.end_date), cth = conThu(b);
+    t.dem += dem; t.hoaHong += b.commission_amount ?? 0; t.phong += b.rent_amount ?? 0;
+    t.truoc += ota ? 0 : (b.deposit_amount ?? 0); t.conThu += cth; t.daThu += daThu; t.conNo += conNo;
+    hang.push([
+      tenCan(b.unit_id), b.guest_name || "(chưa ghi tên)",
+      oNgay(b.start_date), oNgay(b.end_date),
+      ct("D" + r + "-C" + r, dem, DINH_DANG.so),       // số đêm = ngày trả − ngày vào
+      b.term_type === "dai_han" ? "Dài hạn" : "Ngắn hạn",
+      KENH[b.channel] ?? "—", b.broker_name ?? "",
+      oTien(b.commission_amount), oTien(b.rent_amount),
+      ota ? "" : oTien(b.deposit_amount),
+      ota ? oTien(0) : ct("MAX(0,J" + r + "-K" + r + ")", cth, DINH_DANG.tien),
+      oTien(daThu), oTien(conNo),
+      ota ? "Nền tảng thu hộ, chuyển khoản trực tiếp" : (TRANG_THAI[b.status] ?? b.status),
+    ]);
+  });
+  if (ds.length) {
+    const c = ds.length + 1;
+    const sum = (col, giaTri) => ct("SUM(" + col + "2:" + col + c + ")", giaTri, DINH_DANG.tien);
+    const rTong = c + 1;
+    hang.push(["TỔNG", "", "", "",
+      ct("SUM(E2:E" + c + ")", t.dem, DINH_DANG.so), "", "", "",
+      sum("I", t.hoaHong), sum("J", t.phong), sum("K", t.truoc), sum("L", t.conThu),
+      sum("M", t.daThu), sum("N", t.conNo), ""]);
+    hang.push([]);
+    hang.push(["Số lượt", ct("COUNTA(A2:A" + c + ")", ds.length, DINH_DANG.so)]);
+    hang.push(["Độ dài lưu trú trung bình (đêm)",
+      ct("IFERROR(E" + rTong + "/COUNTA(A2:A" + c + "),0)", chia(t.dem, ds.length), "0.0")]);
+  }
+  return { ten: "Theo lượt khách", cot: [26, 20, 12, 12, 8, 10, 13, 14, 14, 15, 14, 18, 14, 14, 30], hang };
+}
+
+function sheetThang(f) {
+  const can = canTrongLoc(f), ds = bookingTrongLoc(f);
+  const hang = [["Tháng", "Căn", "Đêm khả dụng", "Đêm đã bán", "Tỷ lệ lấp đầy",
+                 "Doanh thu ghi nhận", "ADR", "RevPAR", "Thực thu"]];
+  const t = { khaDung: 0, demBan: 0, doanhThu: 0, thucThu: 0 };
+  for (let m = dauThang(f.tu); m < f.den; m = themThang(m, 1)) {
+    const mEnd = themThang(m, 1), ngay = ngayTrongThang(m);
+    for (const u of can) {
+      let demBan = 0, doanhThu = 0;
+      for (const b of ds.filter((x) => x.unit_id === u.id)) {
+        const d = giaoDem(b.start_date, b.end_date, m, mEnd);
+        if (!d) continue;
+        demBan += d;
+        const tongDem = soNgay(b.start_date, b.end_date);
+        doanhThu += (b.term_type === "dai_han"
+          ? (b.rent_amount ?? 0) / ngay
+          : (b.rent_amount ?? 0) / (tongDem || 1)) * d;
+      }
+      if (!demBan) continue;
+      const idB = new Set(ds.filter((x) => x.unit_id === u.id).map((x) => x.id));
+      const thucThu = payments.filter((x) => idB.has(x.booking_id) && x.paid_date
+        && x.paid_date >= m && x.paid_date < mEnd).reduce((s, x) => s + (x.amount_paid ?? 0), 0);
+      t.khaDung += ngay; t.demBan += demBan; t.doanhThu += doanhThu; t.thucThu += thucThu;
+      const r = hang.length + 1;
+      hang.push([nhanThang(m), Mo.tenCan(u, D.props), ngay, demBan,
+        ct("IFERROR(D" + r + "/C" + r + ",0)", chia(demBan, ngay), DINH_DANG.phanTram),
+        oTien(doanhThu),
+        ct("IFERROR(F" + r + "/D" + r + ",0)", chia(doanhThu, demBan), DINH_DANG.tien),
+        ct("IFERROR(F" + r + "/C" + r + ",0)", chia(doanhThu, ngay), DINH_DANG.tien),
+        oTien(thucThu)]);
+    }
+  }
+  const c = hang.length, rTong = c + 1;
+  if (c > 1) hang.push(["TỔNG", "",
+    ct("SUM(C2:C" + c + ")", t.khaDung, DINH_DANG.so),
+    ct("SUM(D2:D" + c + ")", t.demBan, DINH_DANG.so),
+    ct("IFERROR(D" + rTong + "/C" + rTong + ",0)", chia(t.demBan, t.khaDung), DINH_DANG.phanTram),
+    ct("SUM(F2:F" + c + ")", t.doanhThu, DINH_DANG.tien),
+    ct("IFERROR(F" + rTong + "/D" + rTong + ",0)", chia(t.doanhThu, t.demBan), DINH_DANG.tien),
+    ct("IFERROR(F" + rTong + "/C" + rTong + ",0)", chia(t.doanhThu, t.khaDung), DINH_DANG.tien),
+    ct("SUM(I2:I" + c + ")", t.thucThu, DINH_DANG.tien)]);
+  return { ten: "Theo tháng", cot: [11, 26, 13, 12, 14, 19, 14, 14, 15], hang };
+}
+
+function sheetTaiChinh(f) {
+  const ds = bookingTrongLoc(f);
+  const idB = new Set(ds.map((b) => b.id));
+  const tt = payments.filter((x) => idB.has(x.booking_id));
+  const homNay = vnToday();
+  const hang = [];
+  // Mỗi khối: tiêu đề · dòng cột · các dòng · dòng TỔNG bằng SUM thật (kèm giá trị sẵn)
+  const khoi = (ten, cot, lamDong, tongCot) => {
+    hang.push([ten]); hang.push(cot);
+    const dau = hang.length + 1;
+    const dong = lamDong(dau);
+    dong.forEach((d) => hang.push(d));
+    if (dong.length && tongCot) {
+      const het = dau + dong.length - 1;
+      hang.push(cot.map((_, i) => {
+        if (!tongCot.includes(i)) return i === 0 ? "TỔNG" : "";
+        const tong = dong.reduce((s, d) => s + (Number(d[i] && d[i].v) || 0), 0);
+        return ct("SUM(" + cotChu(i) + dau + ":" + cotChu(i) + het + ")", tong, DINH_DANG.tien);
+      }));
+    }
+    if (!dong.length) hang.push(["(không có dòng nào)"]);
+    hang.push([]);
+  };
+
+  const trongKy = tt.filter((x) => x.due_date && x.due_date >= f.tu && x.due_date < f.den);
+  const theoLoai = {};
+  trongKy.forEach((x) => {
+    const k = x.kind ?? "phi_khac";
+    theoLoai[k] = theoLoai[k] ?? { due: 0, paid: 0 };
+    theoLoai[k].due += x.amount_due ?? 0; theoLoai[k].paid += x.amount_paid ?? 0;
+  });
+  khoi("PHẢI THU THEO LOẠI", ["Loại", "Phải thu", "Đã thu", "Còn lại"], (dau) =>
+    Object.entries(theoLoai).map(([k, v], i) => [LOAI_TIEN[k] ?? k, oTien(v.due), oTien(v.paid),
+      ct("B" + (dau + i) + "-C" + (dau + i), v.due - v.paid, DINH_DANG.tien)]), [1, 2, 3]);
+
+  const quaHan = tt.filter((x) => x.due_date && x.due_date < homNay && (x.amount_paid ?? 0) < (x.amount_due ?? 0))
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  khoi("QUÁ HẠN", ["Căn", "Khách", "Kỳ", "Hạn", "Số ngày trễ", "Còn thiếu"], (dau) =>
+    quaHan.map((x, i) => {
+      const b = ds.find((y) => y.id === x.booking_id);
+      return [b ? tenCan(b.unit_id) : "—", b?.guest_name || "—",
+        x.period_label || LOAI_TIEN[x.kind] || x.kind, oNgay(x.due_date),
+        ct("TODAY()-D" + (dau + i), soNgay(x.due_date, homNay), DINH_DANG.so),
+        oTien((x.amount_due ?? 0) - (x.amount_paid ?? 0))];
+    }), [5]);
+
+  const conThuDs = ds.filter((b) => b.status !== "ket_thuc" && conThu(b) > 0)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  khoi("CÒN THU KHI KHÁCH NHẬN PHÒNG",
+    ["Căn", "Khách", "Ngày nhận phòng", "Tiền phòng", "Đã trả trước", "Còn thu"], (dau) =>
+    conThuDs.map((b, i) => [tenCan(b.unit_id), b.guest_name || "—", oNgay(b.start_date),
+      oTien(b.rent_amount), oTien(b.deposit_amount),
+      ct("MAX(0,D" + (dau + i) + "-E" + (dau + i) + ")", conThu(b), DINH_DANG.tien)]), [3, 4, 5]);
+
+  const hoaHong = {};
+  ds.forEach((b) => { if (b.commission_amount) {
+    const k = b.broker_name || "(không ghi tên)";
+    hoaHong[k] = (hoaHong[k] ?? 0) + b.commission_amount; } });
+  khoi("HOA HỒNG MÔI GIỚI", ["Môi giới", "Hoa hồng"], () =>
+    Object.entries(hoaHong).map(([k, v]) => [k, oTien(v)]), [1]);
+
+  const theoKenh = {};
+  ds.forEach((b) => {
+    const k = b.channel ?? "khac";
+    theoKenh[k] = theoKenh[k] ?? { tien: 0, luot: 0 };
+    theoKenh[k].tien += b.rent_amount ?? 0; theoKenh[k].luot++;
+  });
+  khoi("DOANH THU THEO KÊNH", ["Kênh", "Số lượt", "Giá trị", "Cách thu tiền"], () =>
+    Object.entries(theoKenh).map(([k, v]) => [KENH[k] ?? k, v.luot, oTien(v.tien),
+      laOTA(k) ? "Nền tảng thu hộ, chuyển khoản trực tiếp"
+               : "Khách trả trước, thu nốt khi nhận phòng"]), [2]);
+
+  const idChac = new Set(ds.filter((b) => ["da_coc", "dang_o"].includes(b.status)).map((b) => b.id));
+  khoi("DÒNG TIỀN 12 THÁNG TỚI", ["Tháng", "Phải thu"], () => {
+    const r = [];
+    for (let m = dauThang(homNay), i = 0; i < 12; m = themThang(m, 1), i++) {
+      r.push([nhanThang(m), oTien(payments.filter((x) => idChac.has(x.booking_id)
+        && x.due_date && x.due_date >= m && x.due_date < themThang(m, 1))
+        .reduce((a, x) => a + (x.amount_due ?? 0), 0))]);
+    }
+    return r;
+  }, [1]);
+
+  return { ten: "Tài chính", cot: [26, 20, 16, 15, 15, 18, 40], hang };
+}
+
+function sheetGiaiThich(f) {
+  return { ten: "Cách tính", cot: [32, 82], hang: [
+    ["Mô House Calendar — báo cáo", ""],
+    ["Xuất ngày", oNgay(vnToday())],
+    ["Khoảng lọc", ddmmyy(f.tu) + " → " + ddmmyy(f.den)],
+    [],
+    ["Chỉ số", "Cách tính"],
+    ["Số đêm", "Ngày trả phòng trừ ngày vào. Ngày trả phòng không tính đêm đó."],
+    ["Đêm khả dụng", "Số ngày của tháng, tính cho từng căn."],
+    ["Đêm đã bán", "Số đêm của các lượt thuê rơi vào tháng đó."],
+    ["Tỷ lệ lấp đầy", "Đêm đã bán chia đêm khả dụng."],
+    ["Doanh thu ghi nhận", "Phân bổ đều theo ngày: dài hạn lấy giá tháng chia số ngày của tháng, ngắn hạn lấy tổng tiền chia tổng số đêm; rồi nhân với số đêm rơi vào tháng."],
+    ["ADR", "Doanh thu ghi nhận chia đêm đã bán."],
+    ["RevPAR", "Doanh thu ghi nhận chia đêm khả dụng."],
+    ["Thực thu", "Các khoản đã thu có ngày thu nằm trong tháng."],
+    ["Đã trả trước", "Khách chuyển trước một phần tiền phòng. Trừ thẳng vào tiền phòng, KHÔNG hoàn lại cho khách."],
+    ["Còn thu khi nhận phòng", "Tiền phòng trừ khoản đã trả trước. Thu nốt lúc khách nhận phòng."],
+    ["Lượt qua Airbnb, Booking.com, Agoda", "Nền tảng thu tiền của khách rồi chuyển khoản thẳng về tài khoản Mô. Không có khoản trả trước, không thu gì lúc nhận phòng."],
+    [],
+    ["Lưu ý", "Các ô dẫn xuất trong file này là công thức Excel thật. Sửa một con số thì cả bảng tự tính lại."],
+  ] };
+}
+
+function xuatFileExcel() {
+  const f = boLoc();
+  xuatExcel("mo-house-bao-cao-" + vnToday(),
+    [sheetLuot(f), sheetThang(f), sheetTaiChinh(f), sheetGiaiThich(f)]);
 }
 
 // ---------- 8.1 Báo cáo theo lượt khách ----------
@@ -171,8 +376,9 @@ function veLuot(f) {
       KENH[b.channel] ?? "—",
       b.broker_name ?? "—",
       b.commission_amount ? tien(b.commission_amount) : "—",
-      tien(b.rent_amount), tien(b.deposit_amount),
-      { chua_nhan: "Chưa nhận", da_nhan: "Đã nhận", da_hoan: "Đã hoàn", khau_tru: "Khấu trừ" }[b.deposit_status] ?? "—",
+      tien(b.rent_amount),
+      laOTA(b.channel) ? "nền tảng thu" : tien(b.deposit_amount),
+      laOTA(b.channel) ? "—" : (COC[b.deposit_status] ?? "—"),
       daThu ? tien(daThu) : "—", conNo ? tien(conNo) : "—",
       TRANG_THAI[b.status] ?? b.status,
     ] };
@@ -296,8 +502,12 @@ function veTaiChinh(f) {
   const quaHan = tt.filter((t) => t.due_date && t.due_date < homNay && (t.amount_paid ?? 0) < (t.amount_due ?? 0));
   const sapToi = tt.filter((t) => t.due_date && t.due_date >= homNay && t.due_date <= themNgay(homNay, 7)
     && (t.amount_paid ?? 0) < (t.amount_due ?? 0));
-  const cocGiu = ds.filter((b) => b.deposit_status === "da_nhan" && b.status !== "ket_thuc");
-  const cocChuaHoan = ds.filter((b) => b.deposit_status === "da_nhan" && b.status === "ket_thuc");
+  // Cọc ở Mô = khách trả trước, trừ vào tiền phòng, không hoàn lại.
+  // Kênh OTA thì nền tảng thu hộ nên không có khoản nào thu lúc nhận phòng.
+  const conThuKhiNhan = ds.filter((b) => b.status !== "ket_thuc" && conThu(b) > 0);
+  const tongConThu = conThuKhiNhan.reduce((s, b) => s + conThu(b), 0);
+  const daTraTruoc = ds.filter((b) => (b.deposit_amount ?? 0) > 0)
+    .reduce((s, b) => s + b.deposit_amount, 0);
 
   const hoaHong = {};
   ds.forEach((b) => {
@@ -333,11 +543,9 @@ function veTaiChinh(f) {
       soNgay(t.due_date, homNay) + " ngày", tien((t.amount_due ?? 0) - (t.amount_paid ?? 0))] };
   });
 
-  bangHienTai = [];
   const khoiQuaHan = hangQuaHan.length
     ? bang(["Căn", "Khách", "Kỳ", "Hạn", "Trễ", "Còn thiếu"], hangQuaHan, { so: [5] })
     : `<p class="muted">Không có khoản thu nào quá hạn.</p>`;
-  const luuQuaHan = bangHienTai;
 
   const hangSapToi = sapToi.sort((a, b) => a.due_date.localeCompare(b.due_date)).map((t) => {
     const b = ds.find((x) => x.id === t.booking_id);
@@ -349,18 +557,19 @@ function veTaiChinh(f) {
     ? bang(["Căn", "Khách", "Kỳ", "Hạn", "Còn thiếu"], hangSapToi, { so: [4] })
     : `<p class="muted">Không có khoản nào tới hạn trong 7 ngày tới.</p>`;
 
-  const hangCoc = [...cocChuaHoan.map((b) => ({ lop: "tre", o: [tenCan(b.unit_id), b.guest_name || "—",
-      "Chưa hoàn sau khi trả phòng", ddmmyy(b.end_date), tien(b.deposit_amount)] })),
-    ...cocGiu.map((b) => ({ o: [tenCan(b.unit_id), b.guest_name || "—", "Đang giữ", ddmmyy(b.end_date), tien(b.deposit_amount)] }))];
-  const khoiCoc = hangCoc.length ? bang(["Căn", "Khách", "Tình trạng", "Ngày trả phòng", "Số tiền"], hangCoc, { so: [4] })
-    : `<p class="muted">Không có khoản cọc nào đang giữ.</p>`;
+  const hangCoc = conThuKhiNhan.sort((a, b) => a.start_date.localeCompare(b.start_date)).map((b) => ({
+    o: [tenCan(b.unit_id), b.guest_name || "—", ddmmyy(b.start_date),
+        tien(b.rent_amount), tien(b.deposit_amount), tien(conThu(b))] }));
+  const khoiCoc = hangCoc.length
+    ? bang(["Căn", "Khách", "Ngày nhận phòng", "Tiền phòng", "Đã trả trước", "Còn thu khi nhận phòng"], hangCoc, { so: [3, 4, 5] })
+    : `<p class="muted">Không có khoản nào còn phải thu khi khách nhận phòng.</p>`;
 
   $("#than").innerHTML = `
     <div class="the-luoi">
       <div class="the"><span class="so">${tien(tongDue)}</span><span class="nhan">phải thu trong kỳ</span></div>
       <div class="the"><span class="so">${tien(tongPaid)}</span><span class="nhan">đã thu</span></div>
       <div class="the ${tongQuaHan ? "nhac" : ""}"><span class="so">${tien(tongQuaHan)}</span><span class="nhan">quá hạn (${quaHan.length} khoản)</span></div>
-      <div class="the ${cocChuaHoan.length ? "nhac" : ""}"><span class="so">${cocChuaHoan.length}</span><span class="nhan">khoản cọc chưa hoàn</span></div>
+      <div class="the"><span class="so">${tien(tongConThu)}</span><span class="nhan">còn thu khi khách nhận phòng</span></div>
     </div>
 
     <h2>Phải thu theo loại</h2>
@@ -371,7 +580,11 @@ function veTaiChinh(f) {
 
     <h2>Quá hạn</h2>${khoiQuaHan}
     <h2>Sắp tới hạn (7 ngày)</h2>${khoiSapToi}
-    <h2>Tiền cọc</h2>${khoiCoc}
+    <h2>Khách trả trước &amp; còn thu khi nhận phòng</h2>
+    <p class="muted">Tổng đã trả trước trong khoảng lọc: <b>${tien(daTraTruoc)}</b>.
+      Khoản trả trước trừ thẳng vào tiền phòng, không hoàn lại cho khách.
+      Lượt qua Airbnb, Booking.com, Agoda không có dòng nào ở đây vì nền tảng thu hộ.</p>
+    ${khoiCoc}
 
     <h2>Hoa hồng môi giới</h2>
     ${Object.keys(hoaHong).length
@@ -389,10 +602,6 @@ function veTaiChinh(f) {
     <div class="bang-khung"><table class="bang"><thead><tr><th>Tháng</th><th class="so">Phải thu</th></tr></thead>
       <tbody>${dongTien.map((r) => `<tr><td>${nhanThang(r.thang)}</td><td class="so">${r.so ? tien(r.so) : "—"}</td></tr>`).join("")}</tbody></table></div>`;
 
-  // Nút Xuất CSV của tab này lấy danh sách quá hạn — phần cần đối chiếu nhiều nhất
-  bangHienTai = luuQuaHan.length ? luuQuaHan
-    : [["Loại", "Phải thu", "Đã thu", "Còn lại"], ...Object.entries(theoLoai).map(([k, v]) =>
-        [LOAI_TIEN[k] ?? k, v.due, v.paid, v.due - v.paid])];
 }
 </script>
 </body>
