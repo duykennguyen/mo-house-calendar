@@ -355,7 +355,10 @@ async function luuBooking() {
   // Quy tắc như các phần mềm quản lý lưu trú: khách chưa thanh toán xong thì
   // lượt thuê còn treo, không đóng sang "Đã trả phòng" được.
   // Lượt chưa ghi tiền phòng thì không chặn, nếu không sẽ kẹt toàn bộ dữ liệu cũ.
-  if (row.status === "ket_thuc" && !laOTA(row.channel)) {
+  // Chỉ chặn lúc CHUYỂN SANG đã trả phòng. Lượt vốn đã đóng từ trước (dữ liệu cũ
+  // nhập từ TimeTree) vẫn sửa được các trường khác, nếu không sẽ kẹt cứng.
+  const dangDong = row.status === "ket_thuc" && sua?.status !== "ket_thuc";
+  if (dangDong && !laOTA(row.channel)) {
     let thu = [], dvu = [];
     if (sua) {
       const [a, c] = await Promise.all([
