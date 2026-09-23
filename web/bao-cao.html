@@ -627,7 +627,12 @@ function veLuot(f) {
     tien(T.phaiThu), tien(T.daThu), tien(T.conThu), "", ""] });
 
   const tongDem = ds.reduce((s, b) => s + soNgay(b.start_date, b.end_date), 0);
-  const coNgayTao = ds.filter((b) => b.created_at);
+  // Thời gian đặt trước chỉ tính cho lượt được tạo TRƯỚC ngày khách vào. Dữ liệu
+  // nhập lại từ TimeTree có ngày tạo muộn hơn ngày vào nên phải loại ra, không thì
+  // trung bình ra số âm.
+  const coNgayTao = ds.filter((b) => b.created_at
+    && soNgay(b.created_at.slice(0, 10), b.start_date) >= 0);
+  const nhapLai = ds.filter((b) => b.created_at).length - coNgayTao.length;
   const datTruoc = coNgayTao.length
     ? coNgayTao.reduce((s, b) => s + soNgay(b.created_at.slice(0, 10), b.start_date), 0) / coNgayTao.length : null;
   const theoKenh = {};
@@ -644,7 +649,8 @@ function veLuot(f) {
     </div>
     <p class="muted">Tỷ trọng theo kênh: ${Object.entries(theoKenh).map(([k, v]) =>
       `${KENH[k] ?? k} ${phanTram(v / (ds.length || 1))}`).join(" · ") || "—"}
-      ${datTruoc === null ? "<br>Thời gian đặt trước cần cột ngày tạo booking — tài khoản chỉ xem không đọc được cột này." : ""}</p>
+      ${datTruoc === null ? "<br>Thời gian đặt trước cần cột ngày tạo booking — tài khoản chỉ xem không đọc được cột này." : ""}
+      ${nhapLai ? `<br>Không tính ${nhapLai} lượt nhập lại sau ngày khách vào vào con số đặt trước trung bình.` : ""}</p>
     <h2>Từng lượt thuê</h2>
     ${ds.length ? bang(["Căn", "Khách", "Ngày vào", "Ngày trả", "Số đêm", "Kiểu thuê", "Kênh", "Môi giới",
         "Hoa hồng", "Tiền phòng", "Dịch vụ thêm", "Tổng phải thu", "Đã thu", "Còn phải thu",
