@@ -299,6 +299,40 @@
   const dauThangNay = () => dauThang(vnToday());
   const sauThangNay = () => themThang(dauThang(vnToday()), 1);
 
+
+  // ---------- Thanh toán ----------
+  const HINH_THUC = { tien_mat: "Tiền mặt", chuyen_khoan: "Chuyển khoản",
+                      the: "Thẻ", nen_tang: "Nền tảng thu hộ", khac: "Khác" };
+
+  // Một chỗ duy nhất tính tình trạng thanh toán của một lượt thuê, để màn hình
+  // chi tiết, báo cáo và file Excel không bao giờ ra số khác nhau.
+  //   thu  = các dòng trong bảng payments của lượt này
+  //   dvu  = các dòng other_income gắn booking_id của lượt này
+  // Khoản khách trả trước nằm ở chính bảng bookings (deposit_amount) chứ không
+  // phải trong payments — đếm đúng một lần ở đây, đừng nhập lại thành khoản thu.
+  function tinhThanhToan(b, thu = [], dvu = []) {
+    const ota = laOTA(b.channel);
+    const tienDvu = (dvu || []).reduce((s, d) => s + (d.amount ?? 0), 0);
+    const tongPhaiThu = (b.rent_amount ?? 0) + tienDvu;
+    const traTruoc = ["da_nhan", "khau_tru"].includes(b.deposit_status) ? (b.deposit_amount ?? 0) : 0;
+    const thuCacKy = (thu || []).reduce((s, t) => s + (t.amount_paid ?? 0), 0);
+    const daThu = ota ? tongPhaiThu : traTruoc + thuCacKy;
+    const conPhaiThu = Math.max(0, tongPhaiThu - daThu);
+    return {
+      ota, tienDvu, tongPhaiThu, traTruoc, thuCacKy, daThu, conPhaiThu,
+      chuaGhiTien: tongPhaiThu === 0,
+      xong: tongPhaiThu > 0 && conPhaiThu === 0,
+    };
+  }
+
+  // Nhãn ngắn dùng chung cho cả lịch lẫn báo cáo
+  function nhanThanhToan(t) {
+    if (t.ota) return { lop: "ota", chu: "Nền tảng đã thu của khách" };
+    if (t.chuaGhiTien) return { lop: "chua", chu: "Chưa ghi tiền phòng" };
+    if (t.xong) return { lop: "xong", chu: "Đã thanh toán xong" };
+    return { lop: "con", chu: "Còn phải thu " + tien(t.conPhaiThu) };
+  }
+
   window.Mo = {
     sb, C, esc, $, $$, toast, copy, xuatCsv, khoiDong, hopThoaiDangNhap,
     vnToday, d2iso, iso2d, themNgay, themThang, dauThang, soNgay, soThang, ngayTrongThang,
@@ -306,5 +340,6 @@
     TEN_VAI, TRANG_THAI, KENH, COC, LOAI_TIEN, KENH_OTA, laOTA, conThu,
     xuatExcel, serial, DINH_DANG,
     LOAI_THU_KHAC, PHAN_LOAI_CHI, luuLoc, docLoc, noiLoc, dauThangNay, sauThangNay,
+    HINH_THUC, tinhThanhToan, nhanThanhToan,
   };
 })();

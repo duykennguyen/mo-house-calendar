@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=7">
+<link rel="stylesheet" href="assets/style.css?v=8">
 </head>
 <body>
 <div class="wrap">
@@ -132,6 +132,12 @@
   <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="dLuu">Lưu khoản thu</button></div>
 </dialog>
 
+<dialog id="dlgThanhToan" class="rong">
+  <div class="dau"><h3 id="ttTitle">Thanh toán</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than" id="ttBody"></div>
+  <div class="chan" id="ttChan"></div>
+</dialog>
+
 <dialog id="dlgChiTiet">
   <div class="dau"><h3 id="ctTitle">Chi tiết</h3><button class="btn chu" data-close>Đóng</button></div>
   <div class="than" id="ctBody"></div>
@@ -139,10 +145,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=7"></script>
-<script src="assets/app.js?v=7"></script>
-<script src="assets/du-lieu.js?v=7"></script>
-<script src="assets/lich.js?v=7"></script>
+<script src="config.js?v=8"></script>
+<script src="assets/app.js?v=8"></script>
+<script src="assets/du-lieu.js?v=8"></script>
+<script src="assets/lich.js?v=8"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
@@ -346,6 +352,25 @@ async function luuBooking() {
   if (!row.start_date || !row.end_date) return bao("Điền ngày vào và ngày trả phòng.");
   if (row.end_date <= row.start_date) return bao("Ngày trả phòng phải sau ngày vào.");
 
+  // Quy tắc như các phần mềm quản lý lưu trú: khách chưa thanh toán xong thì
+  // lượt thuê còn treo, không đóng sang "Đã trả phòng" được.
+  // Lượt chưa ghi tiền phòng thì không chặn, nếu không sẽ kẹt toàn bộ dữ liệu cũ.
+  if (row.status === "ket_thuc" && !laOTA(row.channel)) {
+    let thu = [], dvu = [];
+    if (sua) {
+      const [a, c] = await Promise.all([
+        sb.from("payments").select("amount_paid,amount_due").eq("booking_id", sua.id),
+        sb.from("other_income").select("amount").eq("booking_id", sua.id).is("deleted_at", null),
+      ]);
+      thu = a.data ?? []; dvu = c.data ?? [];
+    }
+    const t = Mo.tinhThanhToan(row, thu, dvu);
+    if (t.tongPhaiThu > 0 && t.conPhaiThu > 0) {
+      return bao(`Khách còn phải thu ${tien(t.conPhaiThu)} nên chưa chuyển sang Đã trả phòng được. `
+        + `Mở nút Thanh toán ghi khoản thu trước đã.`);
+    }
+  }
+
   $("#bSave").disabled = true;
   const tenMoi = $("#bGuestName").value.trim();
   if (tenMoi) {                              // khách mới: tạo hồ sơ khách trước
@@ -366,6 +391,131 @@ async function luuBooking() {
   }
   $("#dlgBooking").close();
   toast(sua ? "Đã lưu booking" : "Đã tạo booking");
+  await nap();
+}
+
+// ---------- Thanh toán ----------
+// Sổ thu của một lượt thuê: xem đã thu ngày nào bao nhiêu, ghi khoản thu mới,
+// và chỉ khi thu đủ thì mới cho chuyển lượt sang "Đã trả phòng".
+let bkThanhToan = null;
+
+async function moThanhToan(b) {
+  bkThanhToan = b;
+  $("#ttTitle").textContent = `Thanh toán — ${esc(b.guest_name || "booking #" + b.id)}`;
+  $("#ttBody").innerHTML = `<p class="muted">Đang tải…</p>`;
+  $("#dlgThanhToan").showModal();
+  await veThanhToan();
+}
+
+async function veThanhToan() {
+  const b = bkThanhToan;
+  const [{ data: tt }, { data: dvu }] = await Promise.all([
+    sb.from("payments").select("*").eq("booking_id", b.id).order("paid_date", { nullsFirst: false }),
+    sb.from("other_income").select("*").eq("booking_id", b.id).is("deleted_at", null),
+  ]);
+  const t = Mo.tinhThanhToan(b, tt ?? [], dvu ?? []);
+  const n = Mo.nhanThanhToan(t);
+  const daThuDs = (tt ?? []).filter((x) => (x.amount_paid ?? 0) > 0);
+  const conNoDs = (tt ?? []).filter((x) => (x.amount_paid ?? 0) < (x.amount_due ?? 0));
+
+  const hinhThuc = Object.entries(Mo.HINH_THUC)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+
+  $("#ttBody").innerHTML = `
+    <h3>Tình trạng <span class="nhan-tt ${n.lop}">${esc(n.chu)}</span></h3>
+    <div class="bang-khung"><table class="bang tt-tien"><tbody>
+      <tr><td>Tiền phòng</td><td class="so">${tien(b.rent_amount)}</td></tr>
+      ${t.tienDvu ? `<tr><td>Dịch vụ thêm · điện nước</td><td class="so">${tien(t.tienDvu)}</td></tr>` : ""}
+      <tr class="tong"><td>Tổng phải thu</td><td class="so">${tien(t.tongPhaiThu)}</td></tr>
+      <tr><td>Đã thu</td><td class="so">${tien(t.daThu)}</td></tr>
+      <tr class="tong"><td>Còn phải thu</td><td class="so">${tien(t.conPhaiThu)}</td></tr>
+    </tbody></table></div>
+
+    <h3>Các khoản đã thu</h3>
+    ${(t.traTruoc || daThuDs.length) ? `<div class="bang-khung"><table class="bang">
+      <thead><tr><th>Ngày thu</th><th>Nội dung</th><th>Hình thức</th><th class="so">Số tiền</th><th></th></tr></thead>
+      <tbody>
+        ${t.traTruoc ? `<tr><td>—</td>
+          <td>Khách trả trước <small class="muted">(ghi ở form booking)</small></td>
+          <td>—</td><td class="so">${tien(t.traTruoc)}</td><td></td></tr>` : ""}
+        ${daThuDs.map((x) => `<tr>
+          <td>${x.paid_date ? ddmmyy(x.paid_date) : "—"}</td>
+          <td>${esc(x.period_label || LOAI_TIEN[x.kind] || x.kind)}${
+            x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</td>
+          <td>${esc(Mo.HINH_THUC[x.method] ?? x.method ?? "—")}</td>
+          <td class="so">${tien(x.amount_paid)}</td>
+          <td>${me.isAdmin ? `<button class="btn nho" data-xoa-thu="${x.id}">Xóa</button>` : ""}</td>
+        </tr>`).join("")}
+      </tbody></table></div>`
+      : `<p class="muted">Chưa ghi khoản thu nào.</p>`}
+
+    ${conNoDs.length ? `<h3>Kỳ chưa thu</h3><div class="bang-khung"><table class="bang">
+      <thead><tr><th>Kỳ</th><th>Hạn</th><th class="so">Phải thu</th><th></th></tr></thead>
+      <tbody>${conNoDs.map((x) => `<tr class="${x.due_date && x.due_date < vnToday() ? "tre" : ""}">
+        <td>${esc(x.period_label || LOAI_TIEN[x.kind] || x.kind)}</td>
+        <td>${x.due_date ? ddmmyy(x.due_date) : "—"}</td>
+        <td class="so">${tien((x.amount_due ?? 0) - (x.amount_paid ?? 0))}</td>
+        <td><button class="btn nho reu" data-thu-ky="${x.id}" data-so="${x.amount_due}">Thu kỳ này</button></td>
+      </tr>`).join("")}</tbody></table></div>` : ""}
+
+    ${t.ota ? `<p class="nhac-tien nen-tang">Kênh ${KENH[b.channel]} — nền tảng thu tiền của khách
+       và chuyển khoản thẳng về tài khoản Mô, không cần ghi khoản thu ở đây.</p>`
+    : `<h3>Ghi khoản thu mới</h3>
+      <div class="hang-3">
+        <div><label for="ttNgay">Ngày thu</label><input id="ttNgay" type="date" value="${vnToday()}"></div>
+        <div><label for="ttSoTien">Số tiền (đ)</label><input id="ttSoTien" inputmode="numeric" value="${t.conPhaiThu || ""}"></div>
+        <div><label for="ttHinhThuc">Hình thức</label><select id="ttHinhThuc">${hinhThuc}</select></div>
+      </div>
+      <label for="ttGhiChu">Ghi chú</label><input id="ttGhiChu" placeholder="Ví dụ: thu nốt lúc nhận phòng">
+      <p class="muted" id="ttMsg"></p>`}`;
+
+  $("#ttChan").innerHTML = t.ota || !me.canBook ? `<button class="btn" data-close>Đóng</button>` : `
+    <button class="btn" data-close>Đóng</button>
+    <button class="btn chinh" id="ttLuu">Ghi khoản thu</button>`;
+  $$("#dlgThanhToan [data-close]").forEach((x) => (x.onclick = () => {
+    $("#dlgThanhToan").close();
+    if ($("#dlgChiTiet").open) moChiTiet(b.id);
+  }));
+  const nutLuu = $("#ttLuu");
+  if (nutLuu) nutLuu.onclick = luuKhoanThu;
+
+  $("#ttBody").onclick = async (e) => {
+    const xoa = e.target.dataset.xoaThu, ky = e.target.dataset.thuKy;
+    if (xoa) {
+      if (!confirm("Xóa khoản thu này khỏi sổ?")) return;
+      const { error } = await sb.from("payments").delete().eq("id", xoa);
+      if (error) return toast("Lỗi: " + error.message);
+      toast("Đã xóa khoản thu"); return veThanhToan();
+    }
+    if (ky) {
+      const { error } = await sb.from("payments")
+        .update({ amount_paid: Number(e.target.dataset.so), paid_date: vnToday() }).eq("id", ky);
+      if (error) return toast("Lỗi: " + error.message);
+      toast("Đã ghi nhận kỳ thu"); return veThanhToan();
+    }
+  };
+}
+
+async function luuKhoanThu() {
+  const b = bkThanhToan;
+  const so = soTu($("#ttSoTien").value) ?? 0;
+  const ngay = $("#ttNgay").value;
+  if (!ngay) return ($("#ttMsg").textContent = "Chọn ngày thu.");
+  if (!so) return ($("#ttMsg").textContent = "Điền số tiền đã thu.");
+  $("#ttLuu").disabled = true;
+  // Khoản thu thực tế: phải thu và đã thu bằng nhau nên không tạo ra nợ ảo
+  const { error } = await sb.from("payments").insert({
+    booking_id: b.id, kind: "tien_thue",
+    period_label: "Thu ngày " + ddmmyy(ngay),
+    amount_due: so, amount_paid: so,
+    due_date: ngay, paid_date: ngay,
+    method: $("#ttHinhThuc").value,
+    note: $("#ttGhiChu").value.trim() || null,
+  });
+  $("#ttLuu").disabled = false;
+  if (error) return ($("#ttMsg").textContent = "Lỗi: " + error.message);
+  toast("Đã ghi khoản thu");
+  await veThanhToan();
   await nap();
 }
 
@@ -424,28 +574,16 @@ async function moChiTiet(id) {
       <td>${t.due_date ? ddmm(t.due_date) : "—"}${tre ? ` <small>trễ ${soNgay(t.due_date, homNay)} ngày</small>` : ""}</td>
       <td class="so">${tien(t.amount_due)}</td>
       <td class="so">${t.amount_paid ? tien(t.amount_paid) : "—"}</td>
-      <td>${me.canBook && thieu ? `<button class="btn nho reu" data-thu="${t.id}" data-so="${t.amount_due}">Đã thu</button>` : ""}</td>
+      <td>${thieu ? "chưa thu" : "đã thu"}</td>
     </tr>`;
   }).join("");
 
   const dem = soNgay(b.start_date, b.end_date);
   const ds = dvu ?? [];
-  const ota = laOTA(b.channel);
-  // Tiền phòng + dịch vụ thêm = tổng phải thu.
-  // Đã thu = khoản khách trả trước (nếu đã nhận) + các kỳ đã thu trong lịch thu tiền.
-  // Kênh OTA thì nền tảng thu hộ toàn bộ nên coi như đã thu đủ.
-  const tienDvu = ds.reduce((x, d) => x + (d.amount ?? 0), 0);
-  const tongPhaiThu = (b.rent_amount ?? 0) + tienDvu;
-  const traTruoc = ["da_nhan", "khau_tru"].includes(b.deposit_status) ? (b.deposit_amount ?? 0) : 0;
-  const thuCacKy = (tt ?? []).reduce((x, t) => x + (t.amount_paid ?? 0), 0);
-  const daThu = ota ? tongPhaiThu : traTruoc + thuCacKy;
-  const conPhaiThu = Math.max(0, tongPhaiThu - daThu);
-  const xong = tongPhaiThu > 0 && conPhaiThu === 0;
-  const nhan = ota
-    ? `<span class="nhan-tt ota">Nền tảng đã thu của khách</span>`
-    : (!tongPhaiThu ? `<span class="nhan-tt chua">Chưa ghi tiền phòng</span>`
-      : xong ? `<span class="nhan-tt xong">Đã thanh toán xong</span>`
-             : `<span class="nhan-tt con">Còn phải thu ${tien(conPhaiThu)}</span>`);
+  const t = Mo.tinhThanhToan(b, tt ?? [], ds);
+  const { ota, tienDvu, tongPhaiThu, traTruoc, thuCacKy, daThu, conPhaiThu } = t;
+  const n = Mo.nhanThanhToan(t);
+  const nhan = `<span class="nhan-tt ${n.lop}">${esc(n.chu)}</span>`;
 
   const dongTien = (ten, so, dam) =>
     `<tr${dam ? ' class="tong"' : ""}><td>${ten}</td><td class="so">${tien(so)}</td></tr>`;
@@ -486,19 +624,9 @@ async function moChiTiet(id) {
   $("#ctChan").innerHTML = !me.canBook ? "" : `
     <button class="btn" id="ctDichVu">+ Dịch vụ</button>
     ${b.term_type === "dai_han" ? `<button class="btn" id="ctLich">Tạo lịch thu theo tháng</button>` : ""}
-    <button class="btn" id="ctGiaHan">Gia hạn</button>
-    ${b.status !== "huy" ? `<button class="btn" id="ctHuy">Hủy lượt thuê</button>` : ""}
     ${me.isAdmin ? `<button class="btn" id="ctXoa">Xóa</button>` : ""}
-    <button class="btn chinh" id="ctSua">Sửa</button>`;
-
-  $("#ctBody").onclick = async (e) => {
-    const t = e.target.dataset.thu;
-    if (!t) return;
-    const { error } = await sb.from("payments")
-      .update({ amount_paid: Number(e.target.dataset.so), paid_date: vnToday() }).eq("id", t);
-    if (error) return toast("Lỗi: " + error.message);
-    toast("Đã ghi nhận khoản thu"); moChiTiet(id);
-  };
+    <button class="btn" id="ctSua">Sửa</button>
+    <button class="btn ${t.xong || ota ? "" : "chinh"}" id="ctThanhToan">Thanh toán</button>`;
 
   if (me.canBook) {
     const nutLich = $("#ctLich");
@@ -508,15 +636,8 @@ async function moChiTiet(id) {
       toast(`Đã tạo ${data} kỳ thu tiền`); moChiTiet(id);
     };
     $("#ctDichVu").onclick = () => moDichVu(b);
-    $("#ctGiaHan").onclick = () => { $("#dlgChiTiet").close(); moForm(null, b.unit_id, b.end_date); };
     $("#ctSua").onclick = () => { $("#dlgChiTiet").close(); moForm(b); };
-    const nutHuy = $("#ctHuy");
-    if (nutHuy) nutHuy.onclick = async () => {
-      if (!confirm("Hủy lượt thuê này? Khoảng ngày đó sẽ thành trống trở lại.")) return;
-      const { error } = await sb.from("bookings").update({ status: "huy" }).eq("id", id);
-      if (error) return toast("Lỗi: " + error.message);
-      $("#dlgChiTiet").close(); toast("Đã hủy lượt thuê"); await nap();
-    };
+    $("#ctThanhToan").onclick = () => moThanhToan(b);
     const nutXoa = $("#ctXoa");
     if (nutXoa) nutXoa.onclick = async () => {
       if (!confirm("Xóa booking này? Dữ liệu vẫn còn trong database, chỉ ẩn khỏi lịch.")) return;
