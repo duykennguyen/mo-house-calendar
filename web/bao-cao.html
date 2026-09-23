@@ -198,6 +198,9 @@ function gopTheoThang(f) {
   const idNha = new Set(canTrongLoc(f).map((u) => u.property_id));
   const o = {};
   const lay = (m) => (o[m] = o[m] || { phong: 0, hoaHong: 0, thuKhac: 0, chi: 0, kenh: {}, can: {}, loaiChi: {} });
+  // Liệt kê đủ mọi tháng trong khoảng lọc, kể cả tháng chưa có đồng nào —
+  // báo cáo lãi lỗ mà nhảy cóc qua tháng trống thì rất khó đối chiếu.
+  for (let m = dauThang(f.tu); m < f.den; m = themThang(m, 1)) lay(m);
 
   ds.forEach((b) => {
     const k = nhomKenh(b), ten = tenCan(b.unit_id);
