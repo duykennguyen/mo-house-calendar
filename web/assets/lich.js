@@ -16,6 +16,13 @@
     : { ngay: { n: 90, w: 34 }, tuan: { n: 14, w: 78 }, thang: { n: 12, w: 96 } };
   const BUOC = { ngay: 30, tuan: 14, thang: 6 };   // ← → nhảy bao nhiêu
 
+  // Nhận phòng sau 14h, trả phòng trước 12h. Vẽ thanh lệch theo đúng giờ đó:
+  // bắt đầu quá giữa ô ngày vào một chút, kết thúc trước giữa ô ngày trả một chút.
+  // Nhờ vậy khách trả phòng buổi sáng và khách nhận phòng buổi chiều CÙNG một ngày
+  // vẫn nằm cạnh nhau trên cùng một hàng, không đè lên nhau.
+  const GIO_VAO = 0.58;    // 14h trên trục 24h, làm tròn cho dễ nhìn
+  const GIO_RA = 0.42;     // 12h, lùi một chút để hở khe giữa hai lượt
+
   function taoLich(opts) {
     const khung = opts.khung;
     let duLieu = { props: [], units: [], bookings: [], tu: null, den: null };
@@ -105,24 +112,27 @@
     function thanhCuaCan(unitId, n, w) {
       const het = hetKhung();
       return duLieu.bookings
-        .filter((b) => b.unit_id === unitId && b.status !== "huy" && b.start_date < het && b.end_date > mocDau)
+        .filter((b) => b.unit_id === unitId && b.status !== "huy" && b.start_date < het && b.end_date >= mocDau)
         .map((b) => {
-          let i0, i1;
+          let x0, x1;                       // toạ độ pixel trong lớp thanh
           if (cheDo === "thang") {
-            i0 = soThang(mocDau, b.start_date);
-            i1 = soThang(mocDau, themNgay(b.end_date, -1)) + 1;   // đêm cuối nằm ở tháng nào
+            // Xem theo tháng thì lệch nửa ô là lệch nửa tháng, nên giữ nguyên cách cũ
+            const i0 = soThang(mocDau, b.start_date);
+            const i1 = soThang(mocDau, themNgay(b.end_date, -1)) + 1;
+            x0 = i0 * w + 2; x1 = i1 * w - 2;
           } else {
-            i0 = soNgay(mocDau, b.start_date);
-            i1 = soNgay(mocDau, b.end_date);
+            x0 = (soNgay(mocDau, b.start_date) + GIO_VAO) * w;
+            x1 = (soNgay(mocDau, b.end_date) + GIO_RA) * w;
           }
-          const catTrai = i0 < 0, catPhai = i1 > n;
-          i0 = Math.max(0, i0); i1 = Math.min(n, i1);
-          const rong = Math.max(w * (i1 - i0) - 4, 24);
+          const catTrai = x0 < 0, catPhai = x1 > n * w;
+          x0 = Math.max(0, x0); x1 = Math.min(n * w, x1);
+          if (x1 - x0 < 1) return "";       // nằm trọn ngoài khung nhìn
+          const rong = Math.max(x1 - x0, 16);
           const ten = b.guest_name || (b.status === "ban" ? "Đã đặt" : "(chưa ghi tên khách)");
           const bam = b.id ? "bam" : "";
           return `<button class="thanh ${b.status} ${bam} ${catTrai ? "cat-trai" : ""} ${catPhai ? "cat-phai" : ""}"
             ${b.id ? `data-bk="${b.id}"` : ""} data-key="${b.key}"
-            style="left:${i0 * w + 2}px; width:${rong}px"><span>${esc(ten)}</span></button>`;
+            style="left:${x0}px; width:${rong}px"><span>${esc(ten)}</span></button>`;
         }).join("");
     }
 
