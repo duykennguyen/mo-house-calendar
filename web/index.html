@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=3">
+<link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
 <div class="wrap">
@@ -65,49 +65,71 @@
   </footer>
 </div>
 
-<dialog id="dlgBooking">
+<dialog id="dlgBooking" class="rong">
   <div class="dau"><h3 id="bkTitle">Booking mới</h3><button class="btn chu" data-close>Đóng</button></div>
   <div class="than">
-    <div class="hang">
+    <div class="hang-3">
       <div><label for="bUnit">Căn</label><select id="bUnit"></select></div>
       <div><label for="bTerm">Kiểu thuê</label><select id="bTerm">
         <option value="dai_han">Dài hạn (theo tháng)</option>
         <option value="ngan_han">Ngắn hạn (theo đêm)</option></select></div>
-      <div><label for="bStart">Ngày vào</label><input id="bStart" type="date"></div>
-      <div><label for="bEnd">Ngày trả phòng</label><input id="bEnd" type="date"></div>
-    </div>
-    <p class="muted" id="bSoDem"></p>
-
-    <label for="bGuest">Khách</label>
-    <select id="bGuest"><option value="">— Chọn khách đã có —</option></select>
-    <div class="hang">
-      <div><label for="bGuestName">hoặc thêm khách mới: tên</label><input id="bGuestName" placeholder="Nguyễn Văn A"></div>
-      <div><label for="bGuestPhone">số điện thoại</label><input id="bGuestPhone" inputmode="tel" placeholder="09…"></div>
-    </div>
-
-    <div class="hang">
-      <div><label for="bRent" id="lblGia">Giá thuê mỗi tháng (đ)</label><input id="bRent" inputmode="numeric"></div>
-      <div class="o-coc"><label for="bDeposit">Khách trả trước (đ)</label><input id="bDeposit" inputmode="numeric"></div>
-      <div class="o-coc"><label for="bDepStatus">Tình trạng khoản trả trước</label><select id="bDepStatus">
-        <option value="chua_nhan">Chưa trả trước</option>
-        <option value="da_nhan">Đã trả trước</option>
-        <option value="khau_tru">Đã trừ vào tiền phòng</option></select></div>
-      <div><label for="bStatus">Trạng thái booking</label><select id="bStatus">
+      <div><label for="bStatus">Trạng thái</label><select id="bStatus">
         <option value="giu_cho">Giữ chỗ</option><option value="da_coc">Đã cọc</option>
         <option value="dang_o">Đang ở</option><option value="ket_thuc">Kết thúc</option>
         <option value="huy">Hủy</option></select></div>
+    </div>
+    <div class="hang-3">
+      <div><label for="bStart">Ngày vào</label><input id="bStart" type="date"></div>
+      <div><label for="bEnd">Ngày trả phòng</label><input id="bEnd" type="date"></div>
+      <div><label for="bSoDem">Số đêm</label>
+        <output class="o-ro" id="bSoDem" title="Ngày trả phòng không tính đêm đó">—</output></div>
+    </div>
+    <div class="hang-3">
+      <div class="rong-2"><label for="bGuest">Khách</label>
+        <select id="bGuest"><option value="">— Chọn khách đã có —</option></select></div>
+      <div><label for="bKhachMoi">&nbsp;</label>
+        <button type="button" class="btn" id="bKhachMoi">+ Khách mới</button></div>
+    </div>
+    <div class="hang khach-moi hide">
+      <div><label for="bGuestName">Tên khách mới</label><input id="bGuestName" placeholder="Nguyễn Văn A"></div>
+      <div><label for="bGuestPhone">Số điện thoại</label><input id="bGuestPhone" inputmode="tel" placeholder="09…"></div>
+    </div>
+    <div class="hang-3">
+      <div><label for="bRent" id="lblGia">Tổng tiền thuê (đ)</label><input id="bRent" inputmode="numeric"></div>
+      <div class="o-coc"><label for="bDeposit">Khách trả trước (đ)</label><input id="bDeposit" inputmode="numeric"></div>
+      <div class="o-coc"><label for="bDepStatus">Tình trạng trả trước</label><select id="bDepStatus">
+        <option value="chua_nhan">Chưa trả trước</option>
+        <option value="da_nhan">Đã trả trước</option>
+        <option value="khau_tru">Đã trừ vào tiền phòng</option></select></div>
+    </div>
+    <div class="hang-3">
       <div><label for="bChannel">Kênh</label><select id="bChannel">
         <option value="truc_tiep">Trực tiếp</option><option value="moi_gioi">Môi giới</option>
         <option value="airbnb">Airbnb</option><option value="booking">Booking.com</option>
         <option value="agoda">Agoda</option><option value="khac">Khác</option></select></div>
       <div><label for="bBroker">Môi giới (nếu có)</label><input id="bBroker"></div>
-      <div><label for="bCommission">Hoa hồng môi giới (đ)</label><input id="bCommission" inputmode="numeric"></div>
+      <div><label for="bCommission">Hoa hồng (đ)</label><input id="bCommission" inputmode="numeric"></div>
     </div>
     <p class="nhac-tien" id="bTienTin"></p>
-    <label for="bNote">Ghi chú</label><textarea id="bNote"></textarea>
+    <label for="bNote">Ghi chú</label><textarea id="bNote" rows="2"></textarea>
     <p class="muted" id="bMsg"></p>
   </div>
   <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="bSave">Lưu booking</button></div>
+</dialog>
+
+<dialog id="dlgDichVu">
+  <div class="dau"><h3>Dịch vụ thêm / điện nước</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang-3">
+      <div><label for="dNgay">Ngày</label><input id="dNgay" type="date"></div>
+      <div><label for="dLoai">Loại</label><select id="dLoai"></select></div>
+      <div><label for="dSoTien">Số tiền (đ)</label><input id="dSoTien" inputmode="numeric"></div>
+    </div>
+    <label for="dMoTa">Mô tả</label>
+    <input id="dMoTa" placeholder="Ví dụ: Điện nước tháng 9, thuê xe máy 2 ngày">
+    <p class="muted" id="dMsg"></p>
+  </div>
+  <div class="chan"><button class="btn" data-close>Hủy</button><button class="btn chinh" id="dLuu">Lưu khoản thu</button></div>
 </dialog>
 
 <dialog id="dlgChiTiet">
@@ -117,10 +139,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=3"></script>
-<script src="assets/app.js?v=3"></script>
-<script src="assets/du-lieu.js?v=3"></script>
-<script src="assets/lich.js?v=3"></script>
+<script src="config.js?v=4"></script>
+<script src="assets/app.js?v=4"></script>
+<script src="assets/du-lieu.js?v=4"></script>
+<script src="assets/lich.js?v=4"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
@@ -162,6 +184,14 @@ Mo.khoiDong(null, async (nguoi) => {
   $("#bUnit").onchange = goiYGia;
   $("#bTerm").onchange = () => { nhanGia(); goiYGia(); };
   $("#bChannel").onchange = theoKenh;
+  $("#bKhachMoi").onclick = () => {
+    const o = $(".khach-moi");
+    o.classList.toggle("hide");
+    if (!o.classList.contains("hide")) { $("#bGuest").value = ""; $("#bGuestName").focus(); }
+  };
+  $("#dLuu").onclick = luuDichVu;
+  $("#dLoai").innerHTML = Object.entries(Mo.LOAI_THU_KHAC)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
   $("#bRent").oninput = $("#bDeposit").oninput = nhacTien;
   $("#bStart").onchange = $("#bEnd").onchange = demDem;
 
@@ -268,9 +298,7 @@ function goiYGia() {
 }
 function demDem() {
   const a = $("#bStart").value, b = $("#bEnd").value;
-  if (!a || !b || b <= a) return ($("#bSoDem").textContent = "");
-  const n = soNgay(a, b);
-  $("#bSoDem").textContent = `${n} đêm — ngày trả phòng ${ddmmyy(b)} không tính đêm đó.`;
+  $("#bSoDem").textContent = (!a || !b || b <= a) ? "—" : soNgay(a, b) + " đêm";
 }
 
 function moForm(b, unitId, ngay) {
@@ -282,6 +310,7 @@ function moForm(b, unitId, ngay) {
   $("#bEnd").value = b?.end_date ?? themThang(ngay ?? vnToday(), 1);
   $("#bGuest").value = b?.guest_id ?? "";
   $("#bGuestName").value = ""; $("#bGuestPhone").value = "";
+  $(".khach-moi").classList.add("hide");
   $("#bRent").value = b?.rent_amount ?? "";
   $("#bDeposit").value = b?.deposit_amount ?? "";
   $("#bDepStatus").value = b?.deposit_status ?? "chua_nhan";
@@ -339,6 +368,40 @@ async function luuBooking() {
   await nap();
 }
 
+// ---------- Dịch vụ thêm gắn vào booking ----------
+let bkDichVu = null;
+function moDichVu(b) {
+  bkDichVu = b;
+  $("#dNgay").value = vnToday();
+  $("#dLoai").value = "dien_nuoc";
+  $("#dSoTien").value = "";
+  $("#dMoTa").value = "";
+  $("#dMsg").textContent = "";
+  $("#dlgDichVu").showModal();
+}
+
+async function luuDichVu() {
+  const b = bkDichVu;
+  const u = D.units.find((x) => x.id === b.unit_id);
+  const row = {
+    booking_id: b.id, unit_id: b.unit_id, property_id: u?.property_id ?? null,
+    received_on: $("#dNgay").value,
+    kind: $("#dLoai").value,
+    description: $("#dMoTa").value.trim(),
+    amount: soTu($("#dSoTien").value) ?? 0,
+  };
+  if (!row.received_on) return ($("#dMsg").textContent = "Chọn ngày.");
+  if (!row.description) return ($("#dMsg").textContent = "Ghi mô tả khoản thu.");
+  if (!row.amount) return ($("#dMsg").textContent = "Điền số tiền.");
+  $("#dLuu").disabled = true;
+  const { error } = await sb.from("other_income").insert(row);
+  $("#dLuu").disabled = false;
+  if (error) return ($("#dMsg").textContent = "Lỗi: " + error.message);
+  $("#dlgDichVu").close();
+  toast("Đã ghi khoản thu thêm");
+  moChiTiet(b.id);
+}
+
 // ---------- Chi tiết booking ----------
 async function moChiTiet(id) {
   const b = D.bookings.find((x) => x.id === id);
@@ -346,9 +409,10 @@ async function moChiTiet(id) {
   const u = D.units.find((x) => x.id === b.unit_id);
   $("#ctTitle").textContent = `Booking #${b.id} — ${u ? Mo.tenCan(u, D.props) : ""}`;
 
-  const [{ data: tt }, { data: nk }] = await Promise.all([
+  const [{ data: tt }, { data: nk }, { data: dvu }] = await Promise.all([
     sb.from("payments").select("*").eq("booking_id", id).order("due_date"),
     sb.from("booking_log").select("*").eq("booking_id", id).order("at", { ascending: false }).limit(30),
+    sb.from("other_income").select("*").eq("booking_id", id).is("deleted_at", null).order("received_on"),
   ]);
   const homNay = vnToday();
   const dong = (tt ?? []).map((t) => {
@@ -364,18 +428,54 @@ async function moChiTiet(id) {
   }).join("");
 
   const dem = soNgay(b.start_date, b.end_date);
+  const ds = dvu ?? [];
+  const ota = laOTA(b.channel);
+  // Tiền phòng + dịch vụ thêm = tổng phải thu.
+  // Đã thu = khoản khách trả trước (nếu đã nhận) + các kỳ đã thu trong lịch thu tiền.
+  // Kênh OTA thì nền tảng thu hộ toàn bộ nên coi như đã thu đủ.
+  const tienDvu = ds.reduce((x, d) => x + (d.amount ?? 0), 0);
+  const tongPhaiThu = (b.rent_amount ?? 0) + tienDvu;
+  const traTruoc = ["da_nhan", "khau_tru"].includes(b.deposit_status) ? (b.deposit_amount ?? 0) : 0;
+  const thuCacKy = (tt ?? []).reduce((x, t) => x + (t.amount_paid ?? 0), 0);
+  const daThu = ota ? tongPhaiThu : traTruoc + thuCacKy;
+  const conPhaiThu = Math.max(0, tongPhaiThu - daThu);
+  const xong = tongPhaiThu > 0 && conPhaiThu === 0;
+  const nhan = ota
+    ? `<span class="nhan-tt ota">Nền tảng đã thu của khách</span>`
+    : (!tongPhaiThu ? `<span class="nhan-tt chua">Chưa ghi tiền phòng</span>`
+      : xong ? `<span class="nhan-tt xong">Đã thanh toán xong</span>`
+             : `<span class="nhan-tt con">Còn phải thu ${tien(conPhaiThu)}</span>`);
+
+  const dongTien = (ten, so, dam) =>
+    `<tr${dam ? ' class="tong"' : ""}><td>${ten}</td><td class="so">${tien(so)}</td></tr>`;
+
   $("#ctBody").innerHTML = `
     <p><b>${esc(b.guest_name || "(chưa ghi tên khách)")}</b>${b.guest_phone ? ` · ${esc(b.guest_phone)}` : ""}</p>
     <p>${ddmmyy(b.start_date)} → ${ddmmyy(b.end_date)} · ${dem} đêm
-      · ${b.term_type === "dai_han" ? "dài hạn" : "ngắn hạn"} · <b>${TRANG_THAI[b.status] ?? b.status}</b></p>
-    <p class="muted">Giá: ${tien(b.rent_amount)}${b.term_type === "dai_han" ? "/tháng" : ""}
+      · ${b.term_type === "dai_han" ? "dài hạn" : "ngắn hạn"} · <b>${TRANG_THAI[b.status] ?? b.status}</b>
       · Kênh: ${KENH[b.channel] ?? "—"}${b.broker_name ? " · " + esc(b.broker_name) : ""}${
         b.commission_amount ? " · hoa hồng " + tien(b.commission_amount) : ""}</p>
-    ${laOTA(b.channel)
-      ? `<p class="nhac-tien nen-tang">Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.</p>`
-      : `<p class="nhac-tien">Đã trả trước ${tien(b.deposit_amount)} (${COC[b.deposit_status] ?? "chưa ghi"})
-         · <b>còn thu khi nhận phòng ${tien(conThu(b))}</b>. Khoản trả trước trừ vào tiền phòng, không hoàn lại.</p>`}
-    ${b.note ? `<p class="muted">${esc(b.note)}</p>` : ""}
+
+    <h3>Tình trạng thanh toán ${nhan}</h3>
+    <div class="bang-khung"><table class="bang tt-tien"><tbody>
+      ${dongTien("Tiền phòng" + (b.term_type === "dai_han" ? " (theo tháng)" : ""), b.rent_amount)}
+      ${tienDvu ? dongTien("Dịch vụ thêm · điện nước", tienDvu) : ""}
+      ${dongTien("Tổng phải thu", tongPhaiThu, true)}
+      ${ota ? dongTien("Nền tảng chuyển về", daThu)
+            : dongTien("Khách đã trả trước", traTruoc) + dongTien("Đã thu các kỳ", thuCacKy)}
+      ${dongTien("Còn phải thu", conPhaiThu, true)}
+    </tbody></table></div>
+    ${ota ? `<p class="nhac-tien nen-tang">Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.</p>`
+          : (traTruoc ? `<p class="nhac-tien">Khoản trả trước trừ thẳng vào tiền phòng, không hoàn lại cho khách.</p>` : "")}
+
+    <h3>Dịch vụ thêm &amp; điện nước</h3>
+    ${ds.length ? `<div class="bang-khung"><table class="bang">
+        <thead><tr><th>Ngày</th><th>Mô tả</th><th>Loại</th><th class="so">Số tiền</th></tr></thead>
+        <tbody>${ds.map((d) => `<tr><td>${ddmm(d.received_on)}</td><td>${esc(d.description)}</td>
+          <td>${esc(Mo.LOAI_THU_KHAC[d.kind] ?? d.kind)}</td><td class="so">${tien(d.amount)}</td></tr>`).join("")}
+        </tbody></table></div>`
+      : `<p class="muted">Khách chưa dùng dịch vụ thêm nào.</p>`}
+    ${b.note ? `<h3>Ghi chú</h3><p class="muted">${esc(b.note)}</p>` : ""}
     <h3>Lịch thu tiền</h3>
     ${dong ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Kỳ</th><th>Hạn</th><th>Phải thu</th><th>Đã thu</th><th></th></tr></thead><tbody>${dong}</tbody></table></div>`
            : `<p class="muted">Chưa có lịch thu tiền.</p>`}
@@ -383,6 +483,7 @@ async function moChiTiet(id) {
         `<div class="log"><b>${esc(l.actor ?? "—")}</b> ${esc(l.action)}<div class="khi">${when(l.at)}</div></div>`).join("")}` : ""}`;
 
   $("#ctChan").innerHTML = !me.canBook ? "" : `
+    <button class="btn" id="ctDichVu">+ Dịch vụ</button>
     ${b.term_type === "dai_han" ? `<button class="btn" id="ctLich">Tạo lịch thu theo tháng</button>` : ""}
     <button class="btn" id="ctGiaHan">Gia hạn</button>
     ${b.status !== "huy" ? `<button class="btn" id="ctHuy">Hủy lượt thuê</button>` : ""}
@@ -405,6 +506,7 @@ async function moChiTiet(id) {
       if (error) return toast("Lỗi: " + error.message);
       toast(`Đã tạo ${data} kỳ thu tiền`); moChiTiet(id);
     };
+    $("#ctDichVu").onclick = () => moDichVu(b);
     $("#ctGiaHan").onclick = () => { $("#dlgChiTiet").close(); moForm(null, b.unit_id, b.end_date); };
     $("#ctSua").onclick = () => { $("#dlgChiTiet").close(); moForm(b); };
     const nutHuy = $("#ctHuy");

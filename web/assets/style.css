@@ -191,6 +191,25 @@ dialog .chan { background: var(--kem); display: flex; justify-content: flex-end;
 footer.chan-trang { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--vien);
   color: var(--tro); font-size: .85rem; }
 
+/* ---------- Hộp thoại rộng: form đặt phòng gọn trong một màn hình ---------- */
+dialog.rong { width: min(940px, 96vw); }
+dialog.rong .than { max-height: 74vh; }
+dialog.rong textarea { min-height: 50px; }
+.rong-2 { grid-column: span 2; }
+/* Ô chỉ để đọc, nhìn giống ô nhập cho thẳng hàng */
+.o-ro { display: block; border: 1px solid var(--vien); border-radius: 8px; padding: 9px 11px;
+  background: var(--nen); color: var(--tro); }
+
+/* ---------- Nhãn tình trạng thanh toán ---------- */
+.nhan-tt { display: inline-block; margin-left: 8px; padding: 3px 11px; border-radius: 999px;
+  font-family: var(--sans); font-size: .78rem; font-weight: 600; color: #fff; vertical-align: 2px; }
+.nhan-tt.xong { background: var(--reu-dam); }
+.nhan-tt.con { background: var(--canh-bao); }
+.nhan-tt.ota { background: var(--reu); }
+.nhan-tt.chua { background: var(--tro); }
+table.bang.tt-tien td:first-child { color: var(--tro); }
+table.bang.tt-tien tr.tong td { background: var(--nen); }
+
 /* ---------- Dòng nhắc tiền trong form & chi tiết ---------- */
 .nhac-tien { margin: 10px 0 0; padding: 9px 12px; border-radius: 9px; font-size: .85rem;
   line-height: 1.45; background: var(--nen); border-left: 3px solid var(--vien); color: var(--tro); }
@@ -285,6 +304,7 @@ footer.chan-trang { margin-top: 40px; padding-top: 16px; border-top: 1px solid v
 @media (max-width: 560px) {
   .btn, .tabs button { min-height: 40px; }   /* đủ to để bấm bằng ngón tay */
   .hang, .hang-3 { grid-template-columns: 1fr; }
+  .rong-2 { grid-column: span 1; }
   h1 { font-size: 1.3rem; }
   label { margin: 8px 0 3px; }
   input, select, textarea { padding: 10px 11px; }   /* ≥16px vùng chạm, iOS không tự phóng to */
