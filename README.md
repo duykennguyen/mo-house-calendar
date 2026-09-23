@@ -34,7 +34,8 @@ Calendar là vào thẳng. Điều kiện: cùng `SUPABASE_URL`, cùng publishab
 | File | Ai vào được | Nội dung |
 |---|---|---|
 | `web/index.html` | ai cũng vào | Lịch ribbon: hàng = căn, cột = ngày/tuần/tháng. Nội dung nở ra theo quyền |
-| `web/bao-cao.html` | từ `viewer` trở lên | Theo lượt khách · theo tháng (lấp đầy, ADR, RevPAR) · tài chính. Có xuất CSV |
+| `web/thu-chi.html` | từ `viewer` trở lên (ghi: `manager`, `admin`) | Ghi chi phí trong tháng và thu khác (điện nước, dịch vụ). Lọc theo tháng và theo nhà |
+| `web/bao-cao.html` | từ `viewer` trở lên | Theo lượt khách · theo tháng (lấp đầy, ADR, RevPAR) · **chi phí & lợi nhuận** · tài chính. Xuất Excel có công thức |
 | `web/khach.html` | `manager`, `admin` | Hồ sơ khách, lịch sử lưu trú, tìm theo tên/điện thoại |
 | `web/can-ho.html` | `admin` | Thêm/sửa căn, giá niêm yết, bật/tắt xuất bản ra lịch công khai |
 
@@ -69,6 +70,27 @@ nhánh `main`, GitHub Actions tự đưa `web/` lên Pages.
 
 Còn thiếu dữ liệu: 6 căn của CamF chưa điền **sức chứa** và **diện tích**, nên dòng mô tả
 dưới tên căn chỉ hiện "1 PN". Điền ở trang Căn & giá là đủ, không phải sửa code.
+
+## Cách ghi sổ (22/09/2026)
+
+Mô **tự vận hành trực tiếp**, chấm dứt hợp tác với đơn vị vận hành ngoài. Vì vậy sổ sách
+**không còn chia doanh thu 20/80** như bảng Google Sheets cũ, và cũng bỏ cột "Paid by".
+
+```
+Lợi nhuận = doanh thu phòng − hoa hồng môi giới + thu khác − chi phí
+```
+
+- **Doanh thu phòng** tính vào tháng nào là tuỳ chọn ngay trên tab: tháng khách trả phòng
+  (mặc định), tháng khách nhận phòng, hoặc phân bổ đều theo đêm.
+- **Thu khác** = điện nước thu lại của khách, dịch vụ bán thêm. Bảng `other_income`.
+- **Chi phí** phân loại: quản lý chung · mua tài sản · sửa chữa · điện nước · giặt ủi ·
+  lương · hoa hồng · khác. Bảng `expenses`. Chi phí không gắn nhà là "chung cho cả hệ thống"
+  và **không** được tính khi đang lọc theo một nhà cụ thể.
+- Kênh "Khách trực tiếp lẻ" và "Khách theo tháng" trong báo cáo là cùng kênh trực tiếp,
+  phân biệt bằng kiểu thuê ngắn hạn / dài hạn.
+
+Bộ lọc trang Báo cáo mặc định là **tháng đang chạy** và ghi nhớ lựa chọn lần trước trong
+`localStorage`, mỗi trang một khóa riêng.
 
 ## Lựa chọn đang áp dụng (21/09/2026)
 
