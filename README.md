@@ -71,6 +71,22 @@ nhánh `main`, GitHub Actions tự đưa `web/` lên Pages.
 Còn thiếu dữ liệu: 6 căn của CamF chưa điền **sức chứa** và **diện tích**, nên dòng mô tả
 dưới tên căn chỉ hiện "1 PN". Điền ở trang Căn & giá là đủ, không phải sửa code.
 
+## Màu thanh booking trên lịch (23/09/2026)
+
+| Trạng thái | Màu |
+|---|---|
+| Đang giữ chỗ | vàng pastel |
+| Đã cọc, khách chưa đến | xanh dương pastel |
+| Khách đang ở | tím pastel |
+| Khách đã trả phòng | đỏ pastel |
+| Lịch công khai (không biết trạng thái) | trung tính |
+
+Mã màu nằm trong khối `:root` của `web/assets/style.css`. Nền pastel sáng nên chữ trên
+thanh dùng `--muc` chứ không phải trắng.
+
+> Bảng này **khác** với mục 8 của `mo-hub/CLAUDE.md` (sage / nâu / xám) — tài liệu đó viết
+> trước, chưa cập nhật theo quyết định ngày 23/09/2026.
+
 ## Cách ghi sổ (22/09/2026)
 
 Mô **tự vận hành trực tiếp**, chấm dứt hợp tác với đơn vị vận hành ngoài. Vì vậy sổ sách
