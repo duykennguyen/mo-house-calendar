@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Thu &amp; chi — Mô House Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=3">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Thu &amp; chi</span></a>
+    <nav class="dieu-huong">
+      <a href="index.html">Lịch</a>
+      <a href="thu-chi.html" class="on hide" data-can="xem">Thu &amp; chi</a>
+      <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
+      <a href="khach.html" class="hide" data-can="dat">Khách</a>
+      <a href="can-ho.html" class="hide" data-can="admin">Căn &amp; giá</a>
+      <a id="veHub" href="#">← Mô Hub</a>
+    </nav>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="noiDung">
+    <div class="dai hide" id="daiTrangThai"></div>
+
+    <div class="cong-cu">
+      <button class="btn" id="thangTruoc" aria-label="Tháng trước">←</button>
+      <input id="fThang" type="month" aria-label="Tháng">
+      <button class="btn" id="thangSau" aria-label="Tháng sau">→</button>
+      <select id="fNha" aria-label="Nhà"><option value="">Tất cả nhà</option></select>
+      <button class="btn chinh keo hide" id="themChi" data-can="dat">Thêm chi phí</button>
+    </div>
+
+    <div class="the-luoi" id="tomTat"></div>
+
+    <div class="tabs" id="tabs">
+      <button class="on" data-tab="chi">Chi phí</button>
+      <button data-tab="thu">Thu khác</button>
+    </div>
+    <div id="than"><div class="trong">Đang tải…</div></div>
+  </div>
+
+  <button class="fab hide" id="themFab" data-can="dat" aria-label="Thêm dòng">+</button>
+
+  <footer class="chan-trang">
+    <p class="muted">Chi phí và thu khác ghi ở đây chảy thẳng vào tab <b>Chi phí &amp; lợi nhuận</b>
+      của trang Báo cáo. Lợi nhuận = doanh thu phòng − hoa hồng + thu khác − chi phí.</p>
+  </footer>
+</div>
+
+<dialog id="dlgChi">
+  <div class="dau"><h3 id="chiTitle">Khoản chi mới</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="cNgay">Ngày chi</label><input id="cNgay" type="date"></div>
+      <div><label for="cSoTien">Số tiền (đ)</label><input id="cSoTien" inputmode="numeric" placeholder="500000"></div>
+      <div><label for="cPhanLoai">Phân loại</label><select id="cPhanLoai"></select></div>
+      <div><label for="cNha">Thuộc nhà</label><select id="cNha"><option value="">Chung cho cả hệ thống</option></select></div>
+    </div>
+    <label for="cHangMuc">Hạng mục</label>
+    <input id="cHangMuc" placeholder="Ví dụ: Điện tháng 9, Lương chị Bội, Bình nóng lạnh">
+    <label for="cGhiChu">Ghi chú</label><textarea id="cGhiChu"></textarea>
+    <p class="muted" id="cMsg"></p>
+  </div>
+  <div class="chan">
+    <button class="btn hide" id="cXoa">Xóa</button>
+    <button class="btn" data-close>Hủy</button>
+    <button class="btn chinh" id="cLuu">Lưu khoản chi</button>
+  </div>
+</dialog>
+
+<dialog id="dlgThu">
+  <div class="dau"><h3 id="thuTitle">Khoản thu khác</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="than">
+    <div class="hang">
+      <div><label for="tNgay">Ngày thu</label><input id="tNgay" type="date"></div>
+      <div><label for="tSoTien">Số tiền (đ)</label><input id="tSoTien" inputmode="numeric"></div>
+      <div><label for="tLoai">Loại</label><select id="tLoai"></select></div>
+      <div><label for="tNha">Thuộc nhà</label><select id="tNha"><option value="">Không gắn nhà nào</option></select></div>
+    </div>
+    <label for="tCan">Căn (nếu có)</label><select id="tCan"><option value="">— Không gắn căn —</option></select>
+    <label for="tMoTa">Mô tả</label>
+    <input id="tMoTa" placeholder="Ví dụ: Điện nước khách Gừng tháng 9, thuê xe máy">
+    <label for="tGhiChu">Ghi chú</label><textarea id="tGhiChu"></textarea>
+    <p class="muted" id="tMsg"></p>
+  </div>
+  <div class="chan">
+    <button class="btn hide" id="tXoa">Xóa</button>
+    <button class="btn" data-close>Hủy</button>
+    <button class="btn chinh" id="tLuu">Lưu khoản thu</button>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js?v=3"></script>
+<script src="assets/app.js?v=3"></script>
+<script src="assets/du-lieu.js?v=3"></script>
+<script>
+const { sb, C, esc, $, $$, toast, vnToday, dauThang, themThang, ddmmyy, nhanThang,
+        tien, soTu, LOAI_THU_KHAC, PHAN_LOAI_CHI, noiLoc } = Mo;
+
+let me, props = [], units = [], chiPhi = [], thuKhac = [], tab = "chi", suaChi = null, suaThu = null;
+$("#veHub").href = C.HUB_URL;
+
+// Tháng đang xem -> khoảng ngày [tu, den)
+const thangDangXem = () => $("#fThang").value || vnToday().slice(0, 7);
+const khoang = () => {
+  const tu = thangDangXem() + "-01";
+  return { tu, den: themThang(tu, 1) };
+};
+
+Mo.khoiDong("xem", async (nguoi) => {
+  me = nguoi;
+  $$("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
+  $("#cPhanLoai").innerHTML = Object.entries(PHAN_LOAI_CHI)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("#tLoai").innerHTML = Object.entries(LOAI_THU_KHAC)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+
+  $$("#tabs button").forEach((b) => (b.onclick = () => {
+    $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+    tab = b.dataset.tab; Mo.luuLoc("thu-chi-tab", { tab }); ve();
+  }));
+  const tabCu = Mo.docLoc("thu-chi-tab").tab;
+  if (tabCu === "thu") { tab = "thu"; $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.tab === "thu")); }
+
+  $("#thangTruoc").onclick = () => doiThang(-1);
+  $("#thangSau").onclick = () => doiThang(1);
+  $("#themChi").onclick = $("#themFab").onclick = () => (tab === "chi" ? moChi(null) : moThu(null));
+  $("#cLuu").onclick = luuChi;
+  $("#tLuu").onclick = luuThu;
+  $("#cXoa").onclick = () => xoa("expenses", suaChi, "#dlgChi");
+  $("#tXoa").onclick = () => xoa("other_income", suaThu, "#dlgThu");
+  $("#tNha").onchange = locCanTheoNha;
+
+  await napNha();
+  // Mặc định: tháng đang chạy. Lần sau mở lại đúng tháng và đúng nhà đã chọn.
+  noiLoc("thu-chi", { thang: $("#fThang"), nha: $("#fNha") },
+    { thang: vnToday().slice(0, 7), nha: "" }, nap);
+  await nap();
+});
+
+function doiThang(n) {
+  $("#fThang").value = themThang(thangDangXem() + "-01", n).slice(0, 7);
+  $("#fThang").dispatchEvent(new Event("change"));   // noiLoc ghi lại rồi gọi nap()
+}
+
+async function napNha() {
+  const [rp, ru] = await Promise.all([
+    sb.from("properties").select("id,name,sort").eq("active", true).order("sort"),
+    sb.from("units").select("id,property_id,name,sort").eq("active", true).order("sort"),
+  ]);
+  props = rp.data ?? [];
+  units = Mo.sapXepCan(ru.data ?? [], props);
+  const opt = props.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  $("#fNha").innerHTML = `<option value="">Tất cả nhà</option>` + opt;
+  $("#cNha").innerHTML = `<option value="">Chung cho cả hệ thống</option>` + opt;
+  $("#tNha").innerHTML = `<option value="">Không gắn nhà nào</option>` + opt;
+}
+
+function locCanTheoNha() {
+  const nha = $("#tNha").value;
+  const ds = units.filter((u) => !nha || u.property_id === nha);
+  $("#tCan").innerHTML = `<option value="">— Không gắn căn —</option>` +
+    ds.map((u) => `<option value="${u.id}">${esc(u.name)}</option>`).join("");
+}
+
+async function nap() {
+  const { tu, den } = khoang();
+  const nha = $("#fNha").value;
+  let qc = sb.from("expenses").select("*").gte("spent_on", tu).lt("spent_on", den)
+    .is("deleted_at", null).order("spent_on");
+  let qt = sb.from("other_income").select("*").gte("received_on", tu).lt("received_on", den)
+    .is("deleted_at", null).order("received_on");
+  if (nha) { qc = qc.eq("property_id", nha); qt = qt.eq("property_id", nha); }
+  const [rc, rt] = await Promise.all([qc, qt]);
+  if (rc.error || rt.error) {
+    $("#than").innerHTML = `<div class="trong">Không đọc được sổ sách: ${esc((rc.error || rt.error).message)}</div>`;
+    return;
+  }
+  chiPhi = rc.data ?? []; thuKhac = rt.data ?? [];
+  ve();
+}
+
+const tenNha = (id) => props.find((p) => p.id === id)?.name ?? "Chung";
+const tenCan = (id) => units.find((u) => u.id === id)?.name ?? "";
+
+function ve() {
+  const tongChi = chiPhi.reduce((s, x) => s + (x.amount ?? 0), 0);
+  const tongThu = thuKhac.reduce((s, x) => s + (x.amount ?? 0), 0);
+  $("#tomTat").innerHTML = `
+    <div class="the"><span class="so">${tien(tongChi)}</span><span class="nhan">chi phí ${nhanThang(thangDangXem() + "-01")}</span></div>
+    <div class="the"><span class="so">${tien(tongThu)}</span><span class="nhan">thu khác trong tháng</span></div>
+    <div class="the"><span class="so">${chiPhi.length}</span><span class="nhan">khoản chi đã ghi</span></div>
+    <div class="the"><span class="so">${thuKhac.length}</span><span class="nhan">khoản thu khác</span></div>`;
+
+  $("#than").innerHTML = tab === "chi" ? veChi() : veThu();
+  $("#than").onclick = (e) => {
+    const id = e.target.dataset.sua;
+    if (!id || !me.canBook) return;
+    if (tab === "chi") moChi(chiPhi.find((x) => String(x.id) === id));
+    else moThu(thuKhac.find((x) => String(x.id) === id));
+  };
+}
+
+function veChi() {
+  if (!chiPhi.length) return `<div class="trong">Chưa ghi khoản chi nào trong tháng này.${
+    me.canBook ? " Bấm <b>Thêm chi phí</b> để bắt đầu." : ""}</div>`;
+  const theoLoai = {};
+  chiPhi.forEach((x) => (theoLoai[x.category] = (theoLoai[x.category] ?? 0) + (x.amount ?? 0)));
+  const tong = chiPhi.reduce((s, x) => s + (x.amount ?? 0), 0);
+  return `
+    <p class="muted">Theo phân loại: ${Object.entries(theoLoai)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${PHAN_LOAI_CHI[k] ?? k} <b>${tien(v)}</b>`).join(" · ")}</p>
+    <div class="bang-khung"><table class="bang">
+      <thead><tr><th>Ngày</th><th>Hạng mục</th><th>Phân loại</th><th>Nhà</th>
+        <th class="so">Số tiền</th><th></th></tr></thead>
+      <tbody>${chiPhi.map((x) => `<tr>
+        <td>${ddmmyy(x.spent_on)}</td>
+        <td><b>${esc(x.item)}</b>${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</td>
+        <td>${esc(PHAN_LOAI_CHI[x.category] ?? x.category)}</td>
+        <td>${esc(tenNha(x.property_id))}</td>
+        <td class="so">${tien(x.amount)}</td>
+        <td>${me.canBook ? `<button class="btn nho" data-sua="${x.id}">Sửa</button>` : ""}</td>
+      </tr>`).join("")}
+      <tr class="tong"><td colspan="4">TỔNG</td><td class="so">${tien(tong)}</td><td></td></tr>
+      </tbody></table></div>`;
+}
+
+function veThu() {
+  if (!thuKhac.length) return `<div class="trong">Chưa ghi khoản thu khác nào trong tháng này.${
+    me.canBook ? " Bấm nút <b>+</b> để thêm." : ""}</div>`;
+  const tong = thuKhac.reduce((s, x) => s + (x.amount ?? 0), 0);
+  return `<div class="bang-khung"><table class="bang">
+    <thead><tr><th>Ngày</th><th>Mô tả</th><th>Loại</th><th>Nhà · căn</th>
+      <th class="so">Số tiền</th><th></th></tr></thead>
+    <tbody>${thuKhac.map((x) => `<tr>
+      <td>${ddmmyy(x.received_on)}</td>
+      <td><b>${esc(x.description)}</b>${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</td>
+      <td>${esc(LOAI_THU_KHAC[x.kind] ?? x.kind)}</td>
+      <td>${esc(tenNha(x.property_id))}${x.unit_id ? " · " + esc(tenCan(x.unit_id)) : ""}</td>
+      <td class="so">${tien(x.amount)}</td>
+      <td>${me.canBook ? `<button class="btn nho" data-sua="${x.id}">Sửa</button>` : ""}</td>
+    </tr>`).join("")}
+    <tr class="tong"><td colspan="4">TỔNG</td><td class="so">${tien(tong)}</td><td></td></tr>
+    </tbody></table></div>`;
+}
+
+// ---------- Chi phí ----------
+function moChi(x) {
+  if (!me.canBook) return;
+  suaChi = x ?? null;
+  $("#chiTitle").textContent = x ? "Sửa khoản chi" : "Khoản chi mới";
+  $("#cNgay").value = x?.spent_on ?? mocNgayTrongThang();
+  $("#cSoTien").value = x?.amount ?? "";
+  $("#cPhanLoai").value = x?.category ?? "quan_ly_chung";
+  $("#cNha").value = x?.property_id ?? $("#fNha").value ?? "";
+  $("#cHangMuc").value = x?.item ?? "";
+  $("#cGhiChu").value = x?.note ?? "";
+  $("#cMsg").textContent = "";
+  $("#cXoa").classList.toggle("hide", !(x && me.isAdmin));
+  $("#dlgChi").showModal();
+}
+
+// Ngày mặc định: hôm nay nếu đang xem tháng này, không thì ngày 1 của tháng đang xem
+function mocNgayTrongThang() {
+  const t = vnToday();
+  return t.slice(0, 7) === thangDangXem() ? t : thangDangXem() + "-01";
+}
+
+async function luuChi() {
+  const row = {
+    spent_on: $("#cNgay").value,
+    amount: soTu($("#cSoTien").value) ?? 0,
+    category: $("#cPhanLoai").value,
+    property_id: $("#cNha").value || null,
+    item: $("#cHangMuc").value.trim(),
+    note: $("#cGhiChu").value.trim() || null,
+  };
+  if (!row.spent_on) return ($("#cMsg").textContent = "Chọn ngày chi.");
+  if (!row.item) return ($("#cMsg").textContent = "Ghi hạng mục đã chi.");
+  if (!row.amount) return ($("#cMsg").textContent = "Điền số tiền.");
+  $("#cLuu").disabled = true;
+  const { error } = suaChi
+    ? await sb.from("expenses").update(row).eq("id", suaChi.id)
+    : await sb.from("expenses").insert(row);
+  $("#cLuu").disabled = false;
+  if (error) return ($("#cMsg").textContent = "Lỗi: " + error.message);
+  $("#dlgChi").close();
+  toast(suaChi ? "Đã lưu khoản chi" : "Đã ghi khoản chi");
+  await nap();
+}
+
+// ---------- Thu khác ----------
+function moThu(x) {
+  if (!me.canBook) return;
+  suaThu = x ?? null;
+  $("#thuTitle").textContent = x ? "Sửa khoản thu khác" : "Khoản thu khác";
+  $("#tNgay").value = x?.received_on ?? mocNgayTrongThang();
+  $("#tSoTien").value = x?.amount ?? "";
+  $("#tLoai").value = x?.kind ?? "dien_nuoc";
+  $("#tNha").value = x?.property_id ?? $("#fNha").value ?? "";
+  locCanTheoNha();
+  $("#tCan").value = x?.unit_id ?? "";
+  $("#tMoTa").value = x?.description ?? "";
+  $("#tGhiChu").value = x?.note ?? "";
+  $("#tMsg").textContent = "";
+  $("#tXoa").classList.toggle("hide", !(x && me.isAdmin));
+  $("#dlgThu").showModal();
+}
+
+async function luuThu() {
+  const row = {
+    received_on: $("#tNgay").value,
+    amount: soTu($("#tSoTien").value) ?? 0,
+    kind: $("#tLoai").value,
+    property_id: $("#tNha").value || null,
+    unit_id: $("#tCan").value || null,
+    description: $("#tMoTa").value.trim(),
+    note: $("#tGhiChu").value.trim() || null,
+  };
+  if (!row.received_on) return ($("#tMsg").textContent = "Chọn ngày thu.");
+  if (!row.description) return ($("#tMsg").textContent = "Ghi mô tả khoản thu.");
+  if (!row.amount) return ($("#tMsg").textContent = "Điền số tiền.");
+  $("#tLuu").disabled = true;
+  const { error } = suaThu
+    ? await sb.from("other_income").update(row).eq("id", suaThu.id)
+    : await sb.from("other_income").insert(row);
+  $("#tLuu").disabled = false;
+  if (error) return ($("#tMsg").textContent = "Lỗi: " + error.message);
+  $("#dlgThu").close();
+  toast(suaThu ? "Đã lưu khoản thu" : "Đã ghi khoản thu");
+  await nap();
+}
+
+// Xóa mềm — chỉ quản trị viên, database cũng chặn thêm một lần nữa
+async function xoa(bang, x, dlg) {
+  if (!x || !confirm("Xóa dòng này? Dữ liệu vẫn còn trong database, chỉ ẩn khỏi sổ.")) return;
+  const { error } = await sb.from(bang).update({ deleted_at: new Date().toISOString() }).eq("id", x.id);
+  if (error) return toast("Lỗi: " + error.message);
+  $(dlg).close(); toast("Đã xóa"); await nap();
+}
+</script>
+</body>
+</html>

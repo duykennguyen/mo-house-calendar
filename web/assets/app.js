@@ -258,11 +258,53 @@
     toast("Đã tải file Excel");
   }
 
+
+  // ---------- Sổ sách: thu khác & chi phí ----------
+  const LOAI_THU_KHAC = { dien_nuoc: "Điện nước", dich_vu: "Dịch vụ", khac: "Khác" };
+  const PHAN_LOAI_CHI = {
+    quan_ly_chung: "Quản lý chung hàng tháng",
+    mua_tai_san: "Mua tài sản",
+    sua_chua: "Sửa chữa",
+    dien_nuoc: "Điện nước",
+    giat_ui: "Giặt ủi",
+    luong: "Lương",
+    hoa_hong: "Hoa hồng",
+    khac: "Khác",
+  };
+
+  // ---------- Nhớ bộ lọc giữa các lần mở trang ----------
+  // Mỗi trang một khóa riêng. Hỏng localStorage (chế độ ẩn danh, chặn cookie)
+  // thì im lặng bỏ qua, trang vẫn chạy với bộ lọc mặc định.
+  const khoaLoc = (trang) => "mo_loc_" + trang;
+  function luuLoc(trang, obj) {
+    try { localStorage.setItem(khoaLoc(trang), JSON.stringify(obj)); } catch { /* bỏ qua */ }
+  }
+  function docLoc(trang) {
+    try { return JSON.parse(localStorage.getItem(khoaLoc(trang))) || {}; } catch { return {}; }
+  }
+  // Gắn vào một nhóm ô lọc: đọc lại giá trị cũ khi mở trang, ghi lại mỗi lần đổi.
+  // `macDinh` là giá trị dùng khi chưa từng lọc lần nào.
+  function noiLoc(trang, o, macDinh, khiDoi) {
+    const cu = docLoc(trang);
+    Object.entries(o).forEach(([ten, el]) => {
+      const v = cu[ten] !== undefined && cu[ten] !== null ? cu[ten] : macDinh[ten];
+      if (v !== undefined && v !== null) el.value = v;
+    });
+    const ghi = () => luuLoc(trang, Object.fromEntries(Object.entries(o).map(([k, el]) => [k, el.value])));
+    Object.values(o).forEach((el) => el.addEventListener("change", () => { ghi(); khiDoi && khiDoi(); }));
+    ghi();
+  }
+
+  // Khoảng ngày của tháng đang chạy, theo quy ước [từ, đến) như mọi chỗ khác
+  const dauThangNay = () => dauThang(vnToday());
+  const sauThangNay = () => themThang(dauThang(vnToday()), 1);
+
   window.Mo = {
     sb, C, esc, $, $$, toast, copy, xuatCsv, khoiDong, hopThoaiDangNhap,
     vnToday, d2iso, iso2d, themNgay, themThang, dauThang, soNgay, soThang, ngayTrongThang,
     ddmm, ddmmyy, nhanThang, when, tien, soTu, phanTram,
     TEN_VAI, TRANG_THAI, KENH, COC, LOAI_TIEN, KENH_OTA, laOTA, conThu,
     xuatExcel, serial, DINH_DANG,
+    LOAI_THU_KHAC, PHAN_LOAI_CHI, luuLoc, docLoc, noiLoc, dauThangNay, sauThangNay,
   };
 })();

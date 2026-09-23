@@ -7,7 +7,7 @@
 <title>Căn &amp; giá — Mô House Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=2">
+<link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
 <div class="wrap hep">
@@ -15,6 +15,7 @@
     <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Căn &amp; giá</span></a>
     <nav class="dieu-huong">
       <a href="index.html">Lịch</a>
+      <a href="thu-chi.html" class="hide" data-can="xem">Thu &amp; chi</a>
       <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
       <a href="khach.html" class="hide" data-can="dat">Khách</a>
       <a href="can-ho.html" class="on hide" data-can="admin">Căn &amp; giá</a>
@@ -82,9 +83,9 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=2"></script>
-<script src="assets/app.js?v=2"></script>
-<script src="assets/du-lieu.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="assets/app.js?v=3"></script>
+<script src="assets/du-lieu.js?v=3"></script>
 <script>
 const { sb, C, esc, $, $$, toast, tien, soTu } = Mo;
 

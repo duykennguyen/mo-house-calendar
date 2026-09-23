@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=2">
+<link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
 <div class="wrap">
@@ -19,6 +19,7 @@
     <a class="brand" href="index.html"><b>Mô House Calendar</b><span>Lịch đặt phòng</span></a>
     <nav class="dieu-huong">
       <a href="index.html" class="on">Lịch</a>
+      <a href="thu-chi.html" class="hide" data-can="xem">Thu &amp; chi</a>
       <a href="bao-cao.html" class="hide" data-can="xem">Báo cáo</a>
       <a href="khach.html" class="hide" data-can="dat">Khách</a>
       <a href="can-ho.html" class="hide" data-can="admin">Căn &amp; giá</a>
@@ -48,6 +49,10 @@
     </div>
 
     <div class="chu-thich" id="chuThich"></div>
+    <p class="muted hide" id="loiTatSoSach" data-can="xem">
+      Chi phí đã chi trong tháng ghi ở <a href="thu-chi.html"><b>Thu &amp; chi</b></a> —
+      từ đó trang Báo cáo tính ra lợi nhuận.
+      <a class="btn nho chinh" href="thu-chi.html">Ghi chi phí tháng này</a></p>
     <div class="lich-khung" id="lich"><div class="trong">Đang tải lịch…</div></div>
     <p class="muted" id="ghiChuCuoi"></p>
   </div>
@@ -112,10 +117,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=2"></script>
-<script src="assets/app.js?v=2"></script>
-<script src="assets/du-lieu.js?v=2"></script>
-<script src="assets/lich.js?v=2"></script>
+<script src="config.js?v=3"></script>
+<script src="assets/app.js?v=3"></script>
+<script src="assets/du-lieu.js?v=3"></script>
+<script src="assets/lich.js?v=3"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
