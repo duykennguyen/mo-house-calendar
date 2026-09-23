@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=5">
+<link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body>
 <div class="wrap">
@@ -139,10 +139,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=5"></script>
-<script src="assets/app.js?v=5"></script>
-<script src="assets/du-lieu.js?v=5"></script>
-<script src="assets/lich.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="assets/app.js?v=6"></script>
+<script src="assets/du-lieu.js?v=6"></script>
+<script src="assets/lich.js?v=6"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
@@ -216,8 +216,8 @@ async function nap() {
 
 function veChuThich() {
   $("#chuThich").innerHTML = me.canView
-    ? `<span class="giu_cho">Giữ chỗ</span><span class="da_coc">Đã cọc</span>
-       <span class="dang_o">Đang ở</span><span class="ket_thuc">Đã kết thúc</span>
+    ? `<span class="giu_cho">Giữ chỗ</span><span class="da_coc">Đã cọc · chưa đến</span>
+       <span class="dang_o">Đang ở</span><span class="ket_thuc">Đã trả phòng</span>
        <span class="pham-vi muted" id="phamVi"></span>`
     : `<span class="ban">Đã có khách</span><span class="pham-vi muted" id="phamVi"></span>`;
   // Từ 23/09/2026 lịch công khai hiện tên khách theo quyết định của chủ dự án.

@@ -13,6 +13,14 @@
   --tro: #5C504D;       /* chữ phụ */
   --vien: #C9B6A4;      /* đường kẻ */
   --canh-bao: #9C3327;  /* đỏ gạch — CHỈ dùng cho quá hạn / cảnh báo */
+
+  /* Màu thanh booking trên lịch — tông pastel, chữ dùng --muc cho đủ tương phản.
+     Mỗi trạng thái một nền nhạt kèm vạch đậm hơn bên trái để dễ phân biệt. */
+  --giu-cho: #F0DCA4;   --giu-cho-dam: #C9A94E;    /* vàng — đang giữ chỗ */
+  --chua-den: #B6CFE8;  --chua-den-dam: #5E8CBB;   /* xanh dương — đã cọc, chưa đến */
+  --dang-o: #CBBCDE;    --dang-o-dam: #8367AC;     /* tím — khách đang ở */
+  --da-out: #EDBBB2;    --da-out-dam: #BC6353;     /* đỏ — khách đã trả phòng */
+  --da-dat: #D3D8CE;    --da-dat-dam: #8A9480;     /* trung tính — lịch công khai */
   --serif: "Lora", Georgia, "Book Antiqua", serif;
   --sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
 
@@ -114,29 +122,30 @@ textarea { min-height: 76px; resize: vertical; }
 .nhan-ngay.nghi { background: #DCCCBD; }
 
 .lop-thanh { position: absolute; top: 0; bottom: 0; right: 0; pointer-events: none; }
-.thanh { position: absolute; top: 5px; bottom: 5px; border-radius: 6px; color: #fff; font-size: .78rem;
+.thanh { position: absolute; top: 5px; bottom: 5px; border-radius: 6px; color: var(--muc); font-size: .78rem;
   padding: 0 6px; display: flex; align-items: center; white-space: nowrap;
   pointer-events: auto; border: none; text-align: left; }
 /* Tên khách bám theo mép trái khi cuộn, để thanh dài vài tháng vẫn đọc được tên */
 .thanh > span { position: sticky; left: calc(var(--trai) + 4px); max-width: 100%;
   overflow: hidden; text-overflow: ellipsis; }
 .thanh.bam { cursor: pointer; }
-.thanh.giu_cho { background: var(--reu); }
-.thanh.da_coc { background: var(--reu-dam); }
-.thanh.dang_o { background: var(--nau-dam); }
-.thanh.ket_thuc { background: var(--tro); }
-.thanh.ban { background: var(--reu-dam); }      /* khách chưa đăng nhập: chỉ biết bận */
-.thanh.cat-trai { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.thanh.giu_cho  { background: var(--giu-cho);  border-left: 3px solid var(--giu-cho-dam); }
+.thanh.da_coc   { background: var(--chua-den); border-left: 3px solid var(--chua-den-dam); }
+.thanh.dang_o   { background: var(--dang-o);   border-left: 3px solid var(--dang-o-dam); }
+.thanh.ket_thuc { background: var(--da-out);   border-left: 3px solid var(--da-out-dam); }
+.thanh.ban      { background: var(--da-dat);   border-left: 3px solid var(--da-dat-dam); }
+.thanh.cat-trai { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; }
 .thanh.cat-phai { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
 .chu-thich { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .82rem; color: var(--tro); margin: 10px 0; }
 .chu-thich span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px;
   margin-right: 6px; vertical-align: -1px; }
-.chu-thich .giu_cho::before { background: var(--reu); }
-.chu-thich .da_coc::before { background: var(--reu-dam); }
-.chu-thich .dang_o::before { background: var(--nau-dam); }
-.chu-thich .ket_thuc::before { background: var(--tro); }
-.chu-thich .ban::before { background: var(--reu-dam); }
+.chu-thich span::before { border: 1px solid rgba(58, 50, 48, .18); }
+.chu-thich .giu_cho::before { background: var(--giu-cho); }
+.chu-thich .da_coc::before { background: var(--chua-den); }
+.chu-thich .dang_o::before { background: var(--dang-o); }
+.chu-thich .ket_thuc::before { background: var(--da-out); }
+.chu-thich .ban::before { background: var(--da-dat); }
 .chu-thich .pham-vi::before { display: none; }
 
 /* Thẻ tóm tắt khi rê chuột lên thanh booking */
