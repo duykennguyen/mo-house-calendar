@@ -118,7 +118,7 @@
           const catTrai = i0 < 0, catPhai = i1 > n;
           i0 = Math.max(0, i0); i1 = Math.min(n, i1);
           const rong = Math.max(w * (i1 - i0) - 4, 24);
-          const ten = b.status === "ban" ? "Đã đặt" : (b.guest_name || "(chưa ghi tên khách)");
+          const ten = b.guest_name || (b.status === "ban" ? "Đã đặt" : "(chưa ghi tên khách)");
           const bam = b.id ? "bam" : "";
           return `<button class="thanh ${b.status} ${bam} ${catTrai ? "cat-trai" : ""} ${catPhai ? "cat-phai" : ""}"
             ${b.id ? `data-bk="${b.id}"` : ""} data-key="${b.key}"
@@ -143,7 +143,7 @@
 
     function hienThe(b, x, y) {
       const dem = soNgay(b.start_date, b.end_date);
-      const dong = [`<b>${esc(b.status === "ban" ? "Đã có khách" : (b.guest_name || "(chưa ghi tên khách)"))}</b>`,
+      const dong = [`<b>${esc(b.guest_name || (b.status === "ban" ? "Đã có khách" : "(chưa ghi tên khách)"))}</b>`,
         `${ddmmyy(b.start_date)} → ${ddmmyy(b.end_date)}`];
       dong.push(b.term_type === "dai_han"
         ? `${dem} đêm · dài hạn`

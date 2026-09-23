@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=4">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
 <div class="wrap">
@@ -139,10 +139,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=4"></script>
-<script src="assets/app.js?v=4"></script>
-<script src="assets/du-lieu.js?v=4"></script>
-<script src="assets/lich.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="assets/app.js?v=5"></script>
+<script src="assets/du-lieu.js?v=5"></script>
+<script src="assets/lich.js?v=5"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
@@ -220,6 +220,7 @@ function veChuThich() {
        <span class="dang_o">Đang ở</span><span class="ket_thuc">Đã kết thúc</span>
        <span class="pham-vi muted" id="phamVi"></span>`
     : `<span class="ban">Đã có khách</span><span class="pham-vi muted" id="phamVi"></span>`;
+  // Từ 23/09/2026 lịch công khai hiện tên khách theo quyết định của chủ dự án.
 }
 
 function ghiChuCuoi() {
@@ -230,7 +231,7 @@ function ghiChuCuoi() {
     return;
   }
   const gia = C.HIEN_GIA_CONG_KHAI ? "" : " Giá thuê theo tháng: liên hệ.";
-  $("#ghiChuCuoi").innerHTML = `Ô trắng là còn trống, thanh màu là đã có khách.
+  $("#ghiChuCuoi").innerHTML = `Ô trắng là còn trống, thanh màu là đã có khách đặt.
     Lịch hiển thị ${C.SO_THANG_CONG_KHAI} tháng tới.${gia}
     <a href="${esc(C.LIEN_HE_URL)}">Liên hệ để giữ chỗ →</a>`;
 }

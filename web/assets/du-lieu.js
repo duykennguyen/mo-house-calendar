@@ -36,7 +36,7 @@
     const [rp, ru, ra] = await Promise.all([
       sb.from("public_properties").select("id,title,area_label,kind,listing_type,map_url,sort").order("sort"),
       sb.from("public_units").select("*").order("sort"),
-      sb.from("public_availability").select("unit_id,start_date,end_date")
+      sb.from("public_availability").select("unit_id,start_date,end_date,guest_name")
         .lt("start_date", den).gt("end_date", tu),
     ]);
     const props = (rp.data ?? []).map((p) => ({ id: p.id, name: p.title, area_label: p.area_label, sort: p.sort }));
@@ -49,7 +49,7 @@
         id: null, key: "b" + i, unit_id: b.unit_id,
         start_date: b.start_date < tu ? tu : b.start_date,
         end_date: b.end_date > den ? den : b.end_date,
-        status: "ban", guest_name: null,
+        status: "ban", guest_name: b.guest_name ?? null,
       })),
       guests: [],
     };
