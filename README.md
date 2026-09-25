@@ -87,6 +87,36 @@ thanh dùng `--muc` chứ không phải trắng.
 > Bảng này **khác** với mục 8 của `mo-hub/CLAUDE.md` (sage / nâu / xám) — tài liệu đó viết
 > trước, chưa cập nhật theo quyết định ngày 23/09/2026.
 
+## Bốn khoản tiền của một lượt thuê (25/09/2026)
+
+Trước đây "tiền cọc" bị dùng cho hai nghĩa khác hẳn nhau. Nay tách hẳn ra, và mỗi khoản
+là một **trục riêng**, không loại trừ nhau — một lượt Airbnb vẫn có thể vừa có cọc bảo đảm
+vừa miễn phí tiền phòng.
+
+| Khoản | Cột trong database | Là doanh thu? | Có hoàn lại? | Ai nhập |
+|---|---|---|---|---|
+| **Đã trả trước** — khách trả trước một phần/toàn bộ tiền phòng | `deposit_amount` + `deposit_status` | Có, trừ thẳng vào hóa đơn | Không | Người nhận booking |
+| **Cọc bảo đảm** — giữ để bảo đảm khách ở tử tế | `security_deposit` + `security_deposit_status` | **Không** | Có, sau khi trừ phát sinh | Người nhận booking |
+| **Nền tảng thu** — Airbnb/Booking/Agoda thu hộ rồi chuyển khoản về | suy ra từ `channel`, **không có ô nhập** | Có | Không | Tự động theo kênh |
+| **Miễn phí tiền phòng** — khách mời, ở thử, đổi dịch vụ | `is_free` | Không (tiền phòng = 0) | — | Công tắc trong form hoặc nút ở màn Thanh toán |
+
+Công thức duy nhất nằm ở `Mo.tinhThanhToan()` trong `web/assets/app.js`, mọi bảng và mọi
+sheet Excel đều gọi qua đó nên không bao giờ lệch số:
+
+```
+tổng phải thu = tiền phòng (0 nếu miễn phí) + dịch vụ phát sinh
+đã thu        = (kênh OTA ? tiền phòng : 0) + đã trả trước + các khoản thu có ngày
+còn phải thu  = max(0, tổng phải thu − đã thu)
+cọc bảo đảm nằm NGOÀI hóa đơn: không cộng vào "đã thu", không vào doanh thu
+```
+
+Lưu ý nghiệp vụ: kênh OTA chỉ thu hộ **tiền phòng**. Dịch vụ phát sinh bán tại chỗ vẫn phải
+thu trực tiếp của khách, nên lượt Airbnb có dịch vụ thêm vẫn hiện "còn phải thu".
+
+Quy tắc kiểu PMS: **không đóng được lượt thuê khi khách còn nợ.** Chỉ chặn đúng lúc chuyển
+sang "đã trả phòng", không chặn khi sửa một lượt vốn đã đóng từ trước (để dữ liệu cũ nhập
+lại vẫn sửa được).
+
 ## Cách ghi sổ (22/09/2026)
 
 Mô **tự vận hành trực tiếp**, chấm dứt hợp tác với đơn vị vận hành ngoài. Vì vậy sổ sách
@@ -97,7 +127,12 @@ Lợi nhuận = doanh thu phòng − hoa hồng môi giới + thu khác − chi 
 ```
 
 - **Doanh thu phòng** tính vào tháng nào là tuỳ chọn ngay trên tab: tháng khách trả phòng
-  (mặc định), tháng khách nhận phòng, hoặc phân bổ đều theo đêm.
+  (mặc định), tháng khách nhận phòng, phân bổ đều theo đêm, hoặc **tháng thực thu tiền**.
+  Cách cuối cùng dùng để đối soát với sao kê ngân hàng: mỗi khoản thu nằm ở tháng có
+  `payments.paid_date`, không phụ thuộc ngày khách ở. Vì vậy khoản khách trả trước chỉ điền
+  ở form booking (không có ngày thu) sẽ **không** hiện trong cách tính này — muốn khớp sao kê
+  thì ghi khoản đó qua nút **Thanh toán** để nó có ngày.
+- Lượt **miễn phí tiền phòng** có doanh thu phòng bằng 0 ở mọi bảng, mọi sheet Excel.
 - **Thu khác** = điện nước thu lại của khách, dịch vụ bán thêm. Bảng `other_income`.
 - **Chi phí** phân loại: quản lý chung · mua tài sản · sửa chữa · điện nước · giặt ủi ·
   lương · hoa hồng · khác. Bảng `expenses`. Chi phí không gắn nhà là "chung cho cả hệ thống"
