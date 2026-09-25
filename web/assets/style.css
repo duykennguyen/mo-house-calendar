@@ -102,16 +102,18 @@ textarea { min-height: 76px; resize: vertical; }
 .lich-hang { display: grid; position: relative; align-items: stretch;
   width: max-content; min-width: 100%; }
 .lich-hang.dau { position: sticky; top: 0; z-index: 4; background: var(--kem); }
+/* Một dòng cho gọn: tên căn chiếm hết bề ngang, loại căn nép góc phải chữ nhỏ */
 .ten-can { position: sticky; left: 0; z-index: 2; background: var(--giay); border-right: 1px solid var(--vien);
-  border-bottom: 1px solid var(--vien); padding: 6px 10px; font-size: .88rem;
-  display: flex; flex-direction: column; justify-content: center; min-height: 42px; }
-.ten-can small { color: var(--tro); font-size: .74rem; }
+  border-bottom: 1px solid var(--vien); padding: 4px 8px; font-size: .86rem;
+  display: flex; flex-direction: row; align-items: center; gap: 6px; min-height: 32px; }
+.ten-can span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ten-can em { flex: none; font-style: normal; font-size: .66rem; color: var(--tro); letter-spacing: .02em; }
 .lich-hang.dau .ten-can { background: var(--kem); z-index: 5; }
 .nha-nhom { position: sticky; left: 0; z-index: 3; background: var(--kem); font-family: var(--serif);
   color: var(--nau-dam); padding: 5px 10px; font-size: .95rem; border-bottom: 1px solid var(--vien);
   white-space: nowrap; }
 .nha-nhom-nen { background: var(--kem); border-bottom: 1px solid var(--vien); }
-.o-ngay { border-right: 1px solid var(--vien); border-bottom: 1px solid var(--vien); min-height: 42px; }
+.o-ngay { border-right: 1px solid var(--vien); border-bottom: 1px solid var(--vien); min-height: 32px; }
 .o-ngay.co-the-dat { cursor: pointer; }
 .o-ngay.co-the-dat:hover { background: var(--kem); }
 .o-ngay.nghi { background: #EDE5DB; }          /* thứ Bảy, Chủ nhật đậm hơn một chút */
@@ -122,7 +124,7 @@ textarea { min-height: 76px; resize: vertical; }
 .nhan-ngay.nghi { background: #DCCCBD; }
 
 .lop-thanh { position: absolute; top: 0; bottom: 0; right: 0; pointer-events: none; }
-.thanh { position: absolute; top: 5px; bottom: 5px; border-radius: 6px; color: var(--muc); font-size: .78rem;
+.thanh { position: absolute; top: 4px; bottom: 4px; border-radius: 5px; color: var(--muc); font-size: .78rem;
   padding: 0 6px; display: flex; align-items: center; white-space: nowrap;
   pointer-events: auto; border: none; text-align: left; }
 /* Tên khách bám theo mép trái khi cuộn, để thanh dài vài tháng vẫn đọc được tên */
@@ -216,6 +218,7 @@ dialog.rong textarea { min-height: 50px; }
 .nhan-tt.con { background: var(--canh-bao); }
 .nhan-tt.ota { background: var(--reu); }
 .nhan-tt.chua { background: var(--tro); }
+.nhan-tt.mien { background: var(--nau); }
 table.bang.tt-tien td:first-child { color: var(--tro); }
 table.bang.tt-tien tr.tong td { background: var(--nen); }
 
@@ -274,10 +277,9 @@ table.bang.tt-tien tr.tong td { background: var(--nen); }
 
   /* Lịch: hàng thấp hơn, mô tả căn một dòng */
   .lich-khung { max-height: none; border-radius: 10px; }
-  .ten-can { padding: 5px 8px; min-height: 38px; font-size: .82rem; }
-  .ten-can span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ten-can small { font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .o-ngay { min-height: 38px; }
+  .ten-can { padding: 4px 6px; min-height: 30px; font-size: .8rem; gap: 4px; }
+  .ten-can em { font-size: .6rem; }
+  .o-ngay { min-height: 30px; }
   .nha-nhom { font-size: .85rem; padding: 4px 8px; }
   .thanh { font-size: .72rem; padding: 0 5px; }
 

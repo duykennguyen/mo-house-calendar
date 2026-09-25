@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -103,6 +103,12 @@
         <option value="khau_tru">Đã trừ vào tiền phòng</option></select></div>
     </div>
     <div class="hang-3">
+      <div class="o-coc"><label for="bCoc">Cọc bảo đảm (đ)</label><input id="bCoc" inputmode="numeric"></div>
+      <div class="o-coc"><label for="bCocTT">Tình trạng cọc bảo đảm</label><select id="bCocTT"></select></div>
+      <div><label for="bFree">Miễn phí tiền phòng</label><select id="bFree">
+        <option value="false">Không</option><option value="true">Có — không thu tiền phòng</option></select></div>
+    </div>
+    <div class="hang-3">
       <div><label for="bChannel">Kênh</label><select id="bChannel">
         <option value="truc_tiep">Trực tiếp</option><option value="moi_gioi">Môi giới</option>
         <option value="airbnb">Airbnb</option><option value="booking">Booking.com</option>
@@ -133,7 +139,7 @@
 </dialog>
 
 <dialog id="dlgThanhToan" class="rong">
-  <div class="dau"><h3 id="ttTitle">Thanh toán</h3><button class="btn chu" data-close>Đóng</button></div>
+  <div class="dau"><h3 id="ttTitle">Thanh toán</h3></div>
   <div class="than" id="ttBody"></div>
   <div class="chan" id="ttChan"></div>
 </dialog>
@@ -145,10 +151,10 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=8"></script>
-<script src="assets/app.js?v=8"></script>
-<script src="assets/du-lieu.js?v=8"></script>
-<script src="assets/lich.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="assets/app.js?v=9"></script>
+<script src="assets/du-lieu.js?v=9"></script>
+<script src="assets/lich.js?v=9"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, soNgay, ddmm, ddmmyy, when,
         tien, soTu, TRANG_THAI, KENH, COC, LOAI_TIEN, laOTA, conThu } = Mo;
@@ -190,6 +196,9 @@ Mo.khoiDong(null, async (nguoi) => {
   $("#bUnit").onchange = goiYGia;
   $("#bTerm").onchange = () => { nhanGia(); goiYGia(); };
   $("#bChannel").onchange = theoKenh;
+  $("#bCocTT").innerHTML = Object.entries(Mo.TT_COC)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("#bFree").onchange = () => { nhanGia(); nhacTien(); };
   $("#bKhachMoi").onclick = () => {
     const o = $(".khach-moi");
     o.classList.toggle("hide");
@@ -268,8 +277,9 @@ async function veCanhBao() {
 // ---------- Form tạo / sửa booking ----------
 function nhanGia() {
   const ota = laOTA($("#bChannel").value);
-  $("#lblGia").textContent = ota
-    ? "Nền tảng chuyển về (đ)"
+  const mienPhi = $("#bFree").value === "true";
+  $("#lblGia").textContent = mienPhi ? "Giá niêm yết (không thu) (đ)"
+    : ota ? "Nền tảng chuyển về (đ)"
     : ($("#bTerm").value === "dai_han" ? "Giá thuê mỗi tháng (đ)" : "Tổng tiền thuê (đ)");
 }
 
@@ -284,6 +294,11 @@ function theoKenh() {
 
 function nhacTien() {
   const el = $("#bTienTin");
+  if ($("#bFree").value === "true") {
+    el.className = "nhac-tien nen-tang";
+    el.textContent = "Miễn phí tiền phòng — không tính vào doanh thu. Dịch vụ phát sinh vẫn thu bình thường.";
+    return;
+  }
   if (laOTA($("#bChannel").value)) {
     el.className = "nhac-tien nen-tang";
     el.textContent = "Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.";
@@ -325,6 +340,9 @@ function moForm(b, unitId, ngay) {
   $("#bChannel").value = b?.channel ?? "truc_tiep";
   $("#bBroker").value = b?.broker_name ?? "";
   $("#bCommission").value = b?.commission_amount ?? "";
+  $("#bCoc").value = b?.security_deposit ?? "";
+  $("#bCocTT").value = b?.security_deposit_status ?? "chua_thu";
+  $("#bFree").value = String(!!b?.is_free);
   $("#bNote").value = b?.note ?? "";
   $("#bMsg").textContent = "";
   theoKenh(); if (!b) goiYGia(); demDem();
@@ -344,6 +362,9 @@ async function luuBooking() {
     channel: $("#bChannel").value,
     broker_name: $("#bBroker").value.trim() || null,
     commission_amount: soTu($("#bCommission").value),
+    security_deposit: soTu($("#bCoc").value),
+    security_deposit_status: $("#bCocTT").value,
+    is_free: $("#bFree").value === "true",
     note: $("#bNote").value.trim() || null,
     guest_id: $("#bGuest").value || null,
   };
@@ -433,6 +454,12 @@ async function veThanhToan() {
       <tr><td>Đã thu</td><td class="so">${tien(t.daThu)}</td></tr>
       <tr class="tong"><td>Còn phải thu</td><td class="so">${tien(t.conPhaiThu)}</td></tr>
     </tbody></table></div>
+    ${t.cocBaoDam ? `<div class="bang-khung" style="margin-top:10px"><table class="bang tt-tien"><tbody>
+      <tr><td>Cọc bảo đảm · <b>${esc(Mo.TT_COC[b.security_deposit_status] ?? "—")}</b></td>
+        <td class="so">${tien(t.cocBaoDam)}</td></tr>
+    </tbody></table></div>
+    <p class="nhac-tien">Cọc bảo đảm không phải doanh thu và không nằm trong hóa đơn phòng.
+      Cuối kỳ trừ các khoản phát sinh rồi hoàn lại phần còn lại cho khách.</p>` : ""}
 
     <h3>Các khoản đã thu</h3>
     ${(t.traTruoc || daThuDs.length) ? `<div class="bang-khung"><table class="bang">
@@ -461,7 +488,9 @@ async function veThanhToan() {
         <td><button class="btn nho reu" data-thu-ky="${x.id}" data-so="${x.amount_due}">Thu kỳ này</button></td>
       </tr>`).join("")}</tbody></table></div>` : ""}
 
-    ${t.ota ? `<p class="nhac-tien nen-tang">Kênh ${KENH[b.channel]} — nền tảng thu tiền của khách
+    ${t.mienPhi ? `<p class="nhac-tien nen-tang">Lượt này <b>miễn phí tiền phòng</b> —
+       tiền phòng không tính vào doanh thu. Dịch vụ phát sinh vẫn thu bình thường.</p>` : ""}
+    ${(t.ota && t.conPhaiThu === 0) ? `<p class="nhac-tien nen-tang">Kênh ${KENH[b.channel]} — nền tảng thu tiền của khách
        và chuyển khoản thẳng về tài khoản Mô, không cần ghi khoản thu ở đây.</p>`
     : `<h3>Ghi khoản thu mới</h3>
       <div class="hang-3">
@@ -472,15 +501,20 @@ async function veThanhToan() {
       <label for="ttGhiChu">Ghi chú</label><input id="ttGhiChu" placeholder="Ví dụ: thu nốt lúc nhận phòng">
       <p class="muted" id="ttMsg"></p>`}`;
 
-  $("#ttChan").innerHTML = t.ota || !me.canBook ? `<button class="btn" data-close>Đóng</button>` : `
+  $("#ttChan").innerHTML = !me.canBook ? `<button class="btn" data-close>Đóng</button>` : `
+    ${b.is_free ? `<button class="btn" id="ttBoMienPhi">Bỏ miễn phí</button>`
+                : `<button class="btn" id="ttMienPhi">Miễn phí tiền phòng</button>`}
     <button class="btn" data-close>Đóng</button>
-    <button class="btn chinh" id="ttLuu">Ghi khoản thu</button>`;
+    ${(t.ota && t.conPhaiThu === 0) ? "" : `<button class="btn chinh" id="ttLuu">Ghi khoản thu</button>`}`;
   $$("#dlgThanhToan [data-close]").forEach((x) => (x.onclick = () => {
     $("#dlgThanhToan").close();
     if ($("#dlgChiTiet").open) moChiTiet(b.id);
   }));
   const nutLuu = $("#ttLuu");
   if (nutLuu) nutLuu.onclick = luuKhoanThu;
+  const nutMP = $("#ttMienPhi"), nutBo = $("#ttBoMienPhi");
+  if (nutMP) nutMP.onclick = () => datMienPhi(true);
+  if (nutBo) nutBo.onclick = () => datMienPhi(false);
 
   $("#ttBody").onclick = async (e) => {
     const xoa = e.target.dataset.xoaThu, ky = e.target.dataset.thuKy;
@@ -497,6 +531,19 @@ async function veThanhToan() {
       toast("Đã ghi nhận kỳ thu"); return veThanhToan();
     }
   };
+}
+
+// Miễn phí tiền phòng: tiền phòng không vào doanh thu, dịch vụ vẫn tính bình thường
+async function datMienPhi(v) {
+  const b = bkThanhToan;
+  if (v && !confirm("Đánh dấu lượt này miễn phí tiền phòng?\n"
+    + "Tiền phòng sẽ không tính vào doanh thu và không phải thu của khách.")) return;
+  const { error } = await sb.from("bookings").update({ is_free: v }).eq("id", b.id);
+  if (error) return toast("Lỗi: " + error.message);
+  toast(v ? "Đã đánh dấu miễn phí tiền phòng" : "Đã bỏ miễn phí");
+  await nap();
+  bkThanhToan = D.bookings.find((x) => x.id === b.id) ?? { ...b, is_free: v };
+  await veThanhToan();
 }
 
 async function luuKhoanThu() {
@@ -606,6 +653,9 @@ async function moChiTiet(id) {
       ${ota ? dongTien("Nền tảng chuyển về", daThu)
             : dongTien("Khách đã trả trước", traTruoc) + dongTien("Đã thu các kỳ", thuCacKy)}
       ${dongTien("Còn phải thu", conPhaiThu, true)}
+      ${t.cocBaoDam ? `<tr><td>Cọc bảo đảm · ${esc(Mo.TT_COC[b.security_deposit_status] ?? "—")}
+        <small class="muted">(không phải doanh thu)</small></td>
+        <td class="so">${tien(t.cocBaoDam)}</td></tr>` : ""}
     </tbody></table></div>
     ${ota ? `<p class="nhac-tien nen-tang">Nền tảng thu tiền của khách và chuyển khoản thẳng về tài khoản Mô — không thu gì lúc nhận phòng.</p>`
           : (traTruoc ? `<p class="nhac-tien">Khoản trả trước trừ thẳng vào tiền phòng, không hoàn lại cho khách.</p>` : "")}
@@ -626,18 +676,11 @@ async function moChiTiet(id) {
 
   $("#ctChan").innerHTML = !me.canBook ? "" : `
     <button class="btn" id="ctDichVu">+ Dịch vụ</button>
-    ${b.term_type === "dai_han" ? `<button class="btn" id="ctLich">Tạo lịch thu theo tháng</button>` : ""}
     ${me.isAdmin ? `<button class="btn" id="ctXoa">Xóa</button>` : ""}
     <button class="btn" id="ctSua">Sửa</button>
     <button class="btn ${t.xong || ota ? "" : "chinh"}" id="ctThanhToan">Thanh toán</button>`;
 
   if (me.canBook) {
-    const nutLich = $("#ctLich");
-    if (nutLich) nutLich.onclick = async () => {
-      const { data, error } = await sb.rpc("generate_rent_schedule", { p_booking: id });
-      if (error) return toast("Lỗi: " + error.message);
-      toast(`Đã tạo ${data} kỳ thu tiền`); moChiTiet(id);
-    };
     $("#ctDichVu").onclick = () => moDichVu(b);
     $("#ctSua").onclick = () => { $("#dlgChiTiet").close(); moForm(b); };
     $("#ctThanhToan").onclick = () => moThanhToan(b);

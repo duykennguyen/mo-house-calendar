@@ -7,7 +7,7 @@
 <title>Báo cáo — Mô House Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -49,9 +49,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=8"></script>
-<script src="assets/app.js?v=8"></script>
-<script src="assets/du-lieu.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="assets/app.js?v=9"></script>
+<script src="assets/du-lieu.js?v=9"></script>
 <script>
 const { sb, C, esc, $, $$, toast, vnToday, themNgay, themThang, dauThang, soNgay,
         ngayTrongThang, ddmm, ddmmyy, nhanThang, tien, phanTram,
@@ -130,6 +130,16 @@ function boLoc() {
 function canTrongLoc(f) {
   return D.units.filter((u) => (!f.nha || u.property_id === f.nha) && (!f.can || u.id === f.can));
 }
+// Tiền phòng của một lượt — lượt miễn phí thì bằng 0 ở MỌI bảng, không chỉ ở chi tiết
+const tienPhong = (b) => (b.is_free ? 0 : (b.rent_amount ?? 0));
+// Như bookingTrongLoc nhưng bỏ điều kiện ngày lưu trú: dùng cho cách tính theo
+// ngày thực thu, vì tiền có thể thu trước hoặc sau kỳ ở rất xa.
+function bookingKhongTheoNgay(f) {
+  const idCan = new Set(canTrongLoc(f).map((u) => u.id));
+  return D.bookings.filter((b) => idCan.has(b.unit_id)
+    && (f.trangThai ? b.status === f.trangThai : b.status !== "huy")
+    && (!f.kenh || b.channel === f.kenh));
+}
 function bookingTrongLoc(f) {
   const idCan = new Set(canTrongLoc(f).map((u) => u.id));
   return D.bookings.filter((b) => idCan.has(b.unit_id)
@@ -182,7 +192,7 @@ const cachTinh = () => cach0;
 
 // Gọi `gom(thang, tien)` cho từng phần doanh thu của một lượt thuê
 function raiDoanhThu(b, cach, gom) {
-  const tong = b.rent_amount ?? 0;
+  const tong = tienPhong(b);
   if (cach === "nhan") return gom(dauThang(b.start_date), tong);
   if (cach === "tra") return gom(dauThang(b.end_date), tong);
   // phân bổ theo đêm: dài hạn lấy giá tháng chia số ngày của tháng,
@@ -207,17 +217,32 @@ function gopTheoThang(f) {
   // báo cáo lãi lỗ mà nhảy cóc qua tháng trống thì rất khó đối chiếu.
   for (let m = dauThang(f.tu); m < f.den; m = themThang(m, 1)) lay(m);
 
-  ds.forEach((b) => {
-    const k = nhomKenh(b), ten = tenCan(b.unit_id);
-    raiDoanhThu(b, cach, (m, v) => {
+  if (cach === "thuc_thu") {
+    // Tiền vào tháng nào thì nằm ở tháng đó, khớp từng dòng sao kê ngân hàng.
+    // Ở đây không lọc theo ngày lưu trú vì tiền có thể thu trước/sau kỳ ở rất xa.
+    const theoId = new Map(bookingKhongTheoNgay(f).map((b) => [b.id, b]));
+    payments.forEach((x) => {
+      const b = theoId.get(x.booking_id);
+      if (!b || !x.paid_date || !(x.amount_paid > 0)) return;
+      const m = dauThang(x.paid_date);
       if (m < dauThang(f.tu) || m >= f.den) return;
-      const g = lay(m);
+      const g = lay(m), k = nhomKenh(b), ten = tenCan(b.unit_id), v = x.amount_paid;
       g.phong += v; g.kenh[k] = (g.kenh[k] ?? 0) + v; g.can[ten] = (g.can[ten] ?? 0) + v;
     });
-    if (b.commission_amount) {
-      const m = dauThang(cach === "nhan" ? b.start_date : b.end_date);
-      if (m >= dauThang(f.tu) && m < f.den) lay(m).hoaHong += b.commission_amount;
-    }
+  } else {
+    ds.forEach((b) => {
+      const k = nhomKenh(b), ten = tenCan(b.unit_id);
+      raiDoanhThu(b, cach, (m, v) => {
+        if (m < dauThang(f.tu) || m >= f.den) return;
+        const g = lay(m);
+        g.phong += v; g.kenh[k] = (g.kenh[k] ?? 0) + v; g.can[ten] = (g.can[ten] ?? 0) + v;
+      });
+    });
+  }
+  ds.forEach((b) => {
+    if (!b.commission_amount) return;
+    const m = dauThang(cach === "nhan" ? b.start_date : b.end_date);
+    if (m >= dauThang(f.tu) && m < f.den) lay(m).hoaHong += b.commission_amount;
   });
 
   // Chi phí và thu khác: lọc theo nhà nếu người dùng đã chọn nhà/căn.
@@ -275,6 +300,7 @@ function veLoiNhuan(f) {
         <option value="tra">Tháng khách trả phòng</option>
         <option value="nhan">Tháng khách nhận phòng</option>
         <option value="dem">Phân bổ đều theo đêm</option>
+        <option value="thuc_thu">Tháng thực thu tiền (đối soát sao kê)</option>
       </select>
     </div>
     <div class="the-luoi">
@@ -290,6 +316,10 @@ function veLoiNhuan(f) {
     ${bangPhu("Doanh thu theo kênh", "kenh", TEN_NHOM_KENH)}
     ${bangPhu("Doanh thu theo căn", "can", null)}
     ${bangPhu("Chi phí theo phân loại", "loaiChi", Mo.PHAN_LOAI_CHI)}
+    ${cach0 === "thuc_thu" ? `<p class="nhac-tien">Đang tính theo <b>tháng thực thu tiền</b>:
+      mỗi khoản tiền ghi ở nút <b>Thanh toán</b> nằm ở tháng có ngày thu, để đối chiếu
+      từng dòng sao kê ngân hàng. Khoản khách trả trước điền ở form booking không có
+      ngày thu nên chưa hiện ở đây — muốn nó vào đúng tháng thì ghi lại qua nút Thanh toán.</p>` : ""}
     <p class="muted">Lợi nhuận = doanh thu phòng − hoa hồng môi giới + thu khác − chi phí.
       Ghi chi phí và thu khác ở trang <a href="thu-chi.html">Thu &amp; chi</a>.
       ${(f.nha || f.can) ? "Đang lọc theo nhà nên các khoản chi ghi <b>chung cho cả hệ thống</b> không được tính vào đây." : ""}</p>`;
@@ -320,7 +350,7 @@ function sheetLuot(f) {
     const tt = Mo.tinhThanhToan(b, payments.filter((x) => x.booking_id === b.id),
                                    thuKhac.filter((x) => x.booking_id === b.id));
     const dem = soNgay(b.start_date, b.end_date);
-    t.dem += dem; t.hoaHong += b.commission_amount ?? 0; t.phong += b.rent_amount ?? 0;
+    t.dem += dem; t.hoaHong += b.commission_amount ?? 0; t.phong += tienPhong(b);
     t.dvu += tt.tienDvu; t.phaiThu += tt.tongPhaiThu; t.daThu += tt.daThu; t.conThu += tt.conPhaiThu;
     hang.push([
       tenCan(b.unit_id), b.guest_name || "(chưa ghi tên)",
@@ -328,7 +358,7 @@ function sheetLuot(f) {
       ct("D" + r + "-C" + r, dem, DINH_DANG.so),       // số đêm = ngày trả − ngày vào
       b.term_type === "dai_han" ? "Dài hạn" : "Ngắn hạn",
       KENH[b.channel] ?? "—", b.broker_name ?? "",
-      oTien(b.commission_amount), oTien(b.rent_amount), oTien(tt.tienDvu),
+      oTien(b.commission_amount), oTien(tienPhong(b)), oTien(tt.tienDvu),
       ct("J" + r + "+K" + r, tt.tongPhaiThu, DINH_DANG.tien),
       oTien(tt.daThu),
       ct("MAX(0,L" + r + "-M" + r + ")", tt.conPhaiThu, DINH_DANG.tien),
@@ -368,8 +398,8 @@ function sheetThang(f) {
         demBan += d;
         const tongDem = soNgay(b.start_date, b.end_date);
         doanhThu += (b.term_type === "dai_han"
-          ? (b.rent_amount ?? 0) / ngay
-          : (b.rent_amount ?? 0) / (tongDem || 1)) * d;
+          ? tienPhong(b) / ngay
+          : tienPhong(b) / (tongDem || 1)) * d;
       }
       if (!demBan) continue;
       const idB = new Set(ds.filter((x) => x.unit_id === u.id).map((x) => x.id));
@@ -464,7 +494,7 @@ function sheetTaiChinh(f) {
   ds.forEach((b) => {
     const k = b.channel ?? "khac";
     theoKenh[k] = theoKenh[k] ?? { tien: 0, luot: 0 };
-    theoKenh[k].tien += b.rent_amount ?? 0; theoKenh[k].luot++;
+    theoKenh[k].tien += tienPhong(b); theoKenh[k].luot++;
   });
   khoi("DOANH THU THEO KÊNH", ["Kênh", "Số lượt", "Giá trị", "Cách thu tiền"], () =>
     Object.entries(theoKenh).map(([k, v]) => [KENH[k] ?? k, v.luot, oTien(v.tien),
@@ -616,7 +646,7 @@ function veLuot(f) {
       KENH[b.channel] ?? "—",
       b.broker_name ?? "—",
       b.commission_amount ? tien(b.commission_amount) : "—",
-      tien(b.rent_amount),
+      t.mienPhi ? "Miễn phí" : tien(t.tienPhong),
       t.tienDvu ? tien(t.tienDvu) : "—",
       tien(t.tongPhaiThu), tien(t.daThu), tien(t.conPhaiThu),
       Mo.nhanThanhToan(t).chu,
@@ -640,14 +670,14 @@ function veLuot(f) {
 
   $("#than").innerHTML = `
     <div class="the-luoi">
-      <div class="the"><span class="so">${ds.length}</span><span class="nhan">lượt thuê</span></div>
+      <div class="the"><span class="so">${tien(T.daThu)}</span><span class="nhan">đã thu</span></div>
       <div class="the"><span class="so">${tongDem}</span><span class="nhan">tổng số đêm</span></div>
       <div class="the"><span class="so">${ds.length ? Math.round(tongDem / ds.length) : 0}</span><span class="nhan">độ dài lưu trú trung bình (đêm)</span></div>
       <div class="the"><span class="so">${datTruoc === null ? "—" : Math.round(datTruoc)}</span><span class="nhan">đặt trước trung bình (ngày)</span></div>
       <div class="the ${T.conThu ? "nhac" : ""}"><span class="so">${tien(T.conThu)}</span><span class="nhan">còn phải thu của khách</span></div>
-      <div class="the"><span class="so">${tien(T.daThu)}</span><span class="nhan">đã thu</span></div>
     </div>
-    <p class="muted">Tỷ trọng theo kênh: ${Object.entries(theoKenh).map(([k, v]) =>
+    <p class="muted">${ds.length} lượt thuê · tổng phải thu ${tien(T.phaiThu)}.
+      <br>Tỷ trọng theo kênh: ${Object.entries(theoKenh).map(([k, v]) =>
       `${KENH[k] ?? k} ${phanTram(v / (ds.length || 1))}`).join(" · ") || "—"}
       ${datTruoc === null ? "<br>Thời gian đặt trước cần cột ngày tạo booking — tài khoản chỉ xem không đọc được cột này." : ""}
       ${nhapLai ? `<br>Không tính ${nhapLai} lượt nhập lại sau ngày khách vào vào con số đặt trước trung bình.` : ""}</p>
@@ -679,8 +709,8 @@ function veThang(f) {
         demBan += d;
         const tongDem = soNgay(b.start_date, b.end_date);
         const moiDem = b.term_type === "dai_han"
-          ? (b.rent_amount ?? 0) / ngay
-          : (b.rent_amount ?? 0) / (tongDem || 1);
+          ? tienPhong(b) / ngay
+          : tienPhong(b) / (tongDem || 1);
         doanhThu += moiDem * d;
       }
       const idB = new Set(ds.filter((x) => x.unit_id === u.id).map((x) => x.id));
@@ -771,7 +801,7 @@ function veTaiChinh(f) {
   const theoKenh = {};
   ds.forEach((b) => {
     const k = b.channel ?? "khac";
-    theoKenh[k] = (theoKenh[k] ?? 0) + (b.rent_amount ?? 0);
+    theoKenh[k] = (theoKenh[k] ?? 0) + tienPhong(b);
   });
 
   // Dòng tiền 12 tháng tới: các kỳ phải thu của booking đã cọc / đang ở

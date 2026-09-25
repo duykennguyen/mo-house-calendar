@@ -303,6 +303,10 @@
   // ---------- Thanh toán ----------
   const HINH_THUC = { tien_mat: "Tiền mặt", chuyen_khoan: "Chuyển khoản",
                       the: "Thẻ", nen_tang: "Nền tảng thu hộ", khac: "Khác" };
+  // Cọc bảo đảm KHÁC tiền trả trước: không phải doanh thu, cuối kỳ trừ phát sinh
+  // rồi hoàn lại cho khách.
+  const TT_COC = { chua_thu: "Chưa thu", dang_giu: "Đang giữ",
+                   da_hoan: "Đã hoàn lại khách", khau_tru: "Đã trừ phát sinh" };
 
   // Một chỗ duy nhất tính tình trạng thanh toán của một lượt thuê, để màn hình
   // chi tiết, báo cáo và file Excel không bao giờ ra số khác nhau.
@@ -312,25 +316,41 @@
   // phải trong payments — đếm đúng một lần ở đây, đừng nhập lại thành khoản thu.
   function tinhThanhToan(b, thu = [], dvu = []) {
     const ota = laOTA(b.channel);
+    const mienPhi = !!b.is_free;
     const tienDvu = (dvu || []).reduce((s, d) => s + (d.amount ?? 0), 0);
-    const tongPhaiThu = (b.rent_amount ?? 0) + tienDvu;
+    const tienPhong = mienPhi ? 0 : (b.rent_amount ?? 0);
+    const tongPhaiThu = tienPhong + tienDvu;
     const traTruoc = ["da_nhan", "khau_tru"].includes(b.deposit_status) ? (b.deposit_amount ?? 0) : 0;
     const thuCacKy = (thu || []).reduce((s, t) => s + (t.amount_paid ?? 0), 0);
-    const daThu = ota ? tongPhaiThu : traTruoc + thuCacKy;
+    // Kênh OTA: nền tảng thu hộ phần TIỀN PHÒNG. Dịch vụ phát sinh vẫn phải thu
+    // trực tiếp của khách nên không gộp vào đây.
+    const daThu = (ota ? tienPhong : 0) + traTruoc + thuCacKy;
     const conPhaiThu = Math.max(0, tongPhaiThu - daThu);
+    // Cọc bảo đảm nằm ngoài hóa đơn: không cộng vào đã thu, không phải doanh thu
+    const cocBaoDam = b.security_deposit ?? 0;
+    const dangGiuCoc = b.security_deposit_status === "dang_giu" ? cocBaoDam : 0;
     return {
-      ota, tienDvu, tongPhaiThu, traTruoc, thuCacKy, daThu, conPhaiThu,
-      chuaGhiTien: tongPhaiThu === 0,
-      xong: tongPhaiThu > 0 && conPhaiThu === 0,
+      ota, mienPhi, tienPhong, tienDvu, tongPhaiThu, traTruoc, thuCacKy, daThu, conPhaiThu,
+      cocBaoDam, dangGiuCoc,
+      chuaGhiTien: !mienPhi && tongPhaiThu === 0,
+      xong: conPhaiThu === 0 && (tongPhaiThu > 0 || mienPhi),
     };
   }
 
   // Nhãn ngắn dùng chung cho cả lịch lẫn báo cáo
   function nhanThanhToan(t) {
+    if (t.conPhaiThu > 0) return { lop: "con", chu: "Còn phải thu " + tien(t.conPhaiThu) };
+    if (t.mienPhi) return { lop: "mien", chu: "Miễn phí tiền phòng" };
     if (t.ota) return { lop: "ota", chu: "Nền tảng đã thu của khách" };
     if (t.chuaGhiTien) return { lop: "chua", chu: "Chưa ghi tiền phòng" };
-    if (t.xong) return { lop: "xong", chu: "Đã thanh toán xong" };
-    return { lop: "con", chu: "Còn phải thu " + tien(t.conPhaiThu) };
+    return { lop: "xong", chu: "Đã thanh toán xong" };
+  }
+
+  // Nhãn ngắn của loại căn để hiện ở góc phải cột tên căn trên lịch
+  function nhanLoaiCan(u) {
+    if (u.bedrooms) return u.bedrooms + "PN";
+    const m = { nguyen_can: "Nguyên căn", studio: "Studio", penthouse: "Penthouse" };
+    return m[u.unit_type] || "";
   }
 
   window.Mo = {
@@ -340,6 +360,6 @@
     TEN_VAI, TRANG_THAI, KENH, COC, LOAI_TIEN, KENH_OTA, laOTA, conThu,
     xuatExcel, serial, DINH_DANG,
     LOAI_THU_KHAC, PHAN_LOAI_CHI, luuLoc, docLoc, noiLoc, dauThangNay, sauThangNay,
-    HINH_THUC, tinhThanhToan, nhanThanhToan,
+    HINH_THUC, TT_COC, tinhThanhToan, nhanThanhToan, nhanLoaiCan,
   };
 })();

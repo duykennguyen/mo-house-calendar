@@ -7,7 +7,7 @@
 <title>Khách — Mô House Calendar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <div class="wrap hep">
@@ -62,9 +62,9 @@
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=8"></script>
-<script src="assets/app.js?v=8"></script>
-<script src="assets/du-lieu.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="assets/app.js?v=9"></script>
+<script src="assets/du-lieu.js?v=9"></script>
 <script>
 const { sb, C, esc, $, $$, toast, ddmmyy, soNgay, tien } = Mo;
 const TRANG_THAI = { giu_cho: "Giữ chỗ", da_coc: "Đã cọc", dang_o: "Đang ở", ket_thuc: "Đã kết thúc", huy: "Đã hủy" };
@@ -133,7 +133,7 @@ function moLichSu(id) {
       const u = D.units.find((x) => x.id === b.unit_id);
       return `<tr><td>${esc(u ? Mo.tenCan(u, D.props) : "—")}</td><td>${ddmmyy(b.start_date)}</td>
         <td>${ddmmyy(b.end_date)}</td><td class="so">${soNgay(b.start_date, b.end_date)}</td>
-        <td class="so">${tien(b.rent_amount)}</td><td>${TRANG_THAI[b.status] ?? b.status}</td></tr>`;
+        <td class="so">${b.is_free ? "Miễn phí" : tien(b.rent_amount)}</td><td>${TRANG_THAI[b.status] ?? b.status}</td></tr>`;
     }).join("")}</tbody></table></div>`
     : `<p class="muted">Khách này chưa có lượt thuê nào.</p>`;
   $("#dlgLichSu").showModal();

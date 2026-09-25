@@ -94,9 +94,10 @@
             <div class="nha-nhom">${esc(p.name)}${p.area_label ? ` <span class="muted">· ${esc(p.area_label)}</span>` : ""}</div>
             <div class="nha-nhom-nen"></div></div>`;
         }
-        const mo = Mo.motaCan(u);
+        // Một dòng: tên căn bên trái, loại căn chữ nhỏ nép góc phải
+        const loai = Mo.nhanLoaiCan(u);
         html += `<div class="lich-hang" style="${grid}">
-          <div class="ten-can"><span>${esc(u.name)}</span>${mo ? `<small>${esc(mo)}</small>` : ""}</div>`;
+          <div class="ten-can"><span>${esc(u.name)}</span>${loai ? `<em>${esc(loai)}</em>` : ""}</div>`;
         for (let i = 0; i < n; i++) {
           const d = cotThu(i), dt = iso2d(d);
           const cuoi = cheDo !== "thang" && [0, 6].includes(dt.getUTCDay());
