@@ -8,3 +8,7 @@ node_modules/
 Thumbs.db
 .vscode/
 .idea/
+
+# Tài liệu vận hành nằm ở repo private mo-hub-private (docs/MO-HOUSE-CALENDAR*.md).
+/docs/
+/CLAUDE.md
