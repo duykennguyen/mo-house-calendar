@@ -151,8 +151,11 @@
     const dai = $("#daiTrangThai");
     if (dai && me.choDuyet) {
       dai.classList.remove("hide");
-      dai.innerHTML = `<b>Đang chờ duyệt.</b> Tài khoản ${esc(me.email)} đã đăng ký nhưng quản trị viên
-        chưa duyệt. Trong lúc chờ, bạn vẫn xem được lịch trống như khách.
+      // Màn hình gửi yêu cầu duyệt (ghi tên → báo quản trị viên) nằm bên Mô Hub,
+      // nên phải nói rõ sang đó làm gì, không thì người mới ngồi chờ vô ích.
+      dai.innerHTML = `<b>Đang chờ duyệt.</b> Tài khoản ${esc(me.email)} đã đăng ký nhưng chưa được cấp quyền.
+        Mở Mô Hub, ghi tên rồi bấm <b>Gửi yêu cầu duyệt</b> để báo quản trị viên.
+        Trong lúc chờ, bạn vẫn xem được lịch trống như khách.
         <a class="btn nho" href="${esc(C.HUB_URL)}">Mở Mô Hub</a>`;
     } else if (dai && me.biTuChoi) {
       dai.classList.remove("hide");
