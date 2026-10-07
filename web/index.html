@@ -610,11 +610,30 @@ async function moChiTiet(id) {
   const u = D.units.find((x) => x.id === b.unit_id);
   $("#ctTitle").textContent = `Booking #${b.id} — ${u ? Mo.tenCan(u, D.props) : ""}`;
 
-  const [{ data: tt }, { data: nk }, { data: dvu }] = await Promise.all([
+  const [{ data: tt }, { data: nk }, { data: dvu }, { data: tep }] = await Promise.all([
     sb.from("payments").select("*").eq("booking_id", id).order("due_date"),
     sb.from("booking_log").select("*").eq("booking_id", id).order("at", { ascending: false }).limit(30),
     sb.from("other_income").select("*").eq("booking_id", id).is("deleted_at", null).order("received_on"),
+    // Ảnh hộ chiếu / ghi chú gửi qua bot Lễ tân — chỉ admin, quản lý (RLS can_book) đọc được
+    me.canBook ? sb.from("booking_files").select("id,path,kind,caption,mime,created_by,created_at")
+      .eq("booking_id", id).is("deleted_at", null).order("created_at") : Promise.resolve({ data: [] }),
   ]);
+  // Kho ảnh riêng tư: mở bằng link ký, hết hạn sau 1 giờ
+  const dsTep = tep ?? [];
+  const linkKy = dsTep.length
+    ? ((await sb.storage.from("chung-tu-khach").createSignedUrls(dsTep.map((f) => f.path), 3600)).data ?? [])
+    : [];
+  const LOAI_TEP = { passport: "Hộ chiếu", cccd: "CCCD", ghi_chu: "Ghi chú", khac: "Ảnh" };
+  const oTep = dsTep.map((f, i) => {
+    const url = linkKy[i]?.signedUrl;
+    const nhan = `${LOAI_TEP[f.kind] ?? "Ảnh"}${f.caption ? " · " + esc(f.caption) : ""}`;
+    const xem = !url ? `<span class="muted">(không mở được)</span>`
+      : f.mime === "application/pdf" ? `<a href="${esc(url)}" target="_blank" rel="noopener">📄 Mở PDF</a>`
+      : `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${nhan}" loading="lazy"
+           style="width:100%;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--vien,#C9B6A4)"></a>`;
+    return `<figure style="margin:0">${xem}<figcaption class="muted" style="font-size:12px;margin-top:4px">${nhan}<br>${
+      esc(f.created_by ?? "")} · ${when(f.created_at)}</figcaption></figure>`;
+  }).join("");
   const homNay = vnToday();
   const dong = (tt ?? []).map((t) => {
     const thieu = (t.amount_paid ?? 0) < t.amount_due;
@@ -667,7 +686,10 @@ async function moChiTiet(id) {
           <td>${esc(Mo.LOAI_THU_KHAC[d.kind] ?? d.kind)}</td><td class="so">${tien(d.amount)}</td></tr>`).join("")}
         </tbody></table></div>`
       : `<p class="muted">Khách chưa dùng dịch vụ thêm nào.</p>`}
-    ${b.note ? `<h3>Ghi chú</h3><p class="muted">${esc(b.note)}</p>` : ""}
+    ${b.note || dsTep.length ? `<h3>Ghi chú${dsTep.length ? " &amp; giấy tờ" : ""}</h3>` : ""}
+    ${b.note ? `<p class="muted">${esc(b.note)}</p>` : ""}
+    ${dsTep.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${oTep}</div>
+      <p class="muted" style="font-size:12px">Ảnh giấy tờ chỉ quản trị và quản lý xem được. Thêm ảnh: gửi cho bot Lễ tân kèm chú thích “#${b.id}”.</p>` : ""}
     <h3>Lịch thu tiền</h3>
     ${dong ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Kỳ</th><th>Hạn</th><th>Phải thu</th><th>Đã thu</th><th></th></tr></thead><tbody>${dong}</tbody></table></div>`
            : `<p class="muted">Chưa có lịch thu tiền.</p>`}
