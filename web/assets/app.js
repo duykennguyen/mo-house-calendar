@@ -266,9 +266,9 @@
   const LOAI_THU_KHAC = { dien_nuoc: "Điện nước", dich_vu: "Dịch vụ", khac: "Khác" };
   const PHAN_LOAI_CHI = {
     quan_ly_chung: "Quản lý chung hàng tháng",
-    mua_tai_san: "Mua tài sản",
+    mua_tai_san: "Mua sắm",
     sua_chua: "Sửa chữa",
-    dien_nuoc: "Điện nước",
+    dien_nuoc: "Điện nước + kĩ thuật",
     giat_ui: "Giặt ủi",
     luong: "Lương",
     hoa_hong: "Hoa hồng",
