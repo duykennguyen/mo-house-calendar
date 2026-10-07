@@ -689,7 +689,7 @@ async function moChiTiet(id) {
     ${b.note || dsTep.length ? `<h3>Ghi chú${dsTep.length ? " &amp; giấy tờ" : ""}</h3>` : ""}
     ${b.note ? `<p class="muted">${esc(b.note)}</p>` : ""}
     ${dsTep.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">${oTep}</div>
-      <p class="muted" style="font-size:12px">Ảnh giấy tờ chỉ quản trị và quản lý xem được. Thêm ảnh: gửi cho bot Lễ tân kèm chú thích “#${b.id}”.</p>` : ""}
+      <p class="muted" style="font-size:12px">Ảnh giấy tờ chỉ quản trị và quản lý xem được, tự xóa khi đã lưu 3 tháng và khách đã trả phòng. Thêm ảnh: gửi cho bot Lễ tân kèm chú thích “#${b.id}”.</p>` : ""}
     <h3>Lịch thu tiền</h3>
     ${dong ? `<div class="bang-khung"><table class="bang"><thead><tr><th>Kỳ</th><th>Hạn</th><th>Phải thu</th><th>Đã thu</th><th></th></tr></thead><tbody>${dong}</tbody></table></div>`
            : `<p class="muted">Chưa có lịch thu tiền.</p>`}
